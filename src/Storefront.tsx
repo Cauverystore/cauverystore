@@ -1,51 +1,124 @@
 import React from "react";
+import ProductCard from "@/components/Productcard";
+import { useProductStore } from "@/store/productStore";
 
-export default function Storefront() {
+const StorefrontPage = () => {
+  const products = useProductStore((state) => state.products);
+
   return (
-    <div className="min-h-screen bg-white text-gray-800">
-      {/* Navbar */}
-      <header className="bg-white shadow-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600">Cauverystore</h1>
-          <nav className="space-x-6">
-            <a href="#products" className="text-gray-700 hover:text-blue-600">Products</a>
-            <a href="#about" className="text-gray-700 hover:text-blue-600">About</a>
-            <a href="#contact" className="text-gray-700 hover:text-blue-600">Contact</a>
-          </nav>
-        </div>
-      </header>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold mb-8">Welcome to Cauvery Store</h1>
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-100 to-white py-20 text-center">
-        <h2 className="text-4xl font-bold text-gray-800 mb-4">Discover Authentic Indian Crafts</h2>
-        <p className="text-gray-600 max-w-xl mx-auto">Handpicked artisan products from across Tamil Nadu, delivered to your doorstep.</p>
-      </section>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
 
-      {/* Product Grid */}
-      <section id="products" className="max-w-6xl mx-auto px-4 py-16">
-        <h3 className="text-3xl font-semibold mb-10 text-center">Featured Products</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="border rounded-xl overflow-hidden shadow hover:shadow-lg transition">
-              <img
-                src={`https://via.placeholder.com/400x300?text=Product+${i}`}
-                alt={`Product ${i}`}
-                className="w-full h-56 object-cover"
-              />
-              <div className="p-4">
-                <h4 className="font-bold text-lg mb-1">Product {i}</h4>
-                <p className="text-sm text-gray-600 mb-2">Artisan-crafted product description goes here.</p>
-                <span className="text-blue-600 font-semibold">₹{i * 199}</span>
-              </div>
+      {/* Category Text Section */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold mb-6">Browse by Categories</h2>
+        <div className="space-y-8 text-gray-800">
+          {[
+            {
+              title: "Electronics & Gadgets",
+              items: [
+                "Electronics",
+                "Mobiles",
+                "Computers & Accessories",
+                "Appliances",
+                "Software",
+                "Apps & Games",
+                "Video Games",
+              ],
+            },
+            {
+              title: "Fashion & Accessories",
+              items: [
+                "Fashion",
+                "Clothing & Accessories",
+                "Shoes & Handbags",
+                "Jewellery",
+                "Luggage & Bags",
+                "Watches",
+              ],
+            },
+            {
+              title: "Home & Living",
+              items: [
+                "Home & Furniture",
+                "Furniture",
+                "Home & Kitchen",
+                "Garden & Outdoors",
+                "Tools & Home Improvement",
+              ],
+            },
+            {
+              title: "Beauty & Personal Care",
+              items: ["Beauty", "Luxury Beauty", "Health & Personal Care"],
+            },
+            {
+              title: "Books, Music & Entertainment",
+              items: ["Books", "MP3 Music", "Music", "Movies & TV Shows"],
+            },
+            {
+              title: "Sports & Hobbies",
+              items: [
+                "Sports, Fitness & Outdoors",
+                "Musical Instruments",
+                "Collectibles",
+              ],
+            },
+            {
+              title: "Baby & Kids",
+              items: ["Baby", "Toys & Games"],
+            },
+            {
+              title: "Automotive & Industrial",
+              items: ["Car & Motorbike", "Two Wheelers"],
+            },
+            {
+              title: "Industrial & Scientific",
+              items: [],
+            },
+            {
+              title: "Grocery & Gourmet",
+              items: ["Grocery & Gourmet Foods"],
+            },
+            {
+              title: "Pet Supplies",
+              items: ["Pet Supplies"],
+            },
+            {
+              title: "Office & Stationery",
+              items: ["Office Products"],
+            },
+            {
+              title: "Promotions & Services",
+              items: ["Deals", "Gift Cards", "Under ₹500", "Flight Bookings"],
+            },
+            {
+              title: "Miscellaneous & Multi-Category",
+              items: ["Beauty, Toys & More"],
+            },
+          ].map((category) => (
+            <div key={category.title}>
+              <h3 className="bg-red-600 text-white font-semibold px-2 py-1 inline-block rounded">
+                {category.title}
+              </h3>
+              {category.items.length > 0 && (
+                <ul className="list-disc list-inside ml-4 mt-2">
+                  {category.items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-100 py-8 text-center">
-        <p className="text-gray-600">&copy; 2025 Cauverystore. All rights reserved.</p>
-      </footer>
+      </div>
     </div>
   );
-}
+};
+
+export default StorefrontPage;

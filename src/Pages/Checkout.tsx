@@ -20,25 +20,76 @@ export default function Checkout() {
 
     setLoading(true);
 
-    const { error } = await supabase.from("orders").insert([
-      {
-        customer_name: customerName,
-        email,
-        address,
-        total_amount: total,
-        items: JSON.stringify(cartItems),
-      },
-    ]);
+    // 1. Create new order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert([
+        {
+          customer_name: customerName,
+          email,
+          address,
+          total_amount: total,
+          items: JSON.stringify(cartItems),
+        },
+      ])
+      .select()
+      .single();
 
-    setLoading(false);
-
-    if (error) {
-      alert("Order failed to save. Try again.");
-    } else {
-      clearCart();
-      setSuccess(true);
-      setTimeout(() => navigate("/"), 3000); // redirect to home after success
+    if (orderError || !order) {
+      setLoading(false);
+      alert("Order creation failed.");
+      return;
     }
+
+    // 2. Insert order items
+    const orderItemsPayload = cartItems.map((item) => ({
+      order_id: order.id,
+      product_id: item.id,
+      product_name: item.name,
+      quantity: item.quantity,
+      unit_price: item.price,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .insert(orderItemsPayload);
+
+    if (itemsError) {
+      setLoading(false);
+      alert("Order items failed to save.");
+      return;
+    }
+
+    // 3. Deduct stock
+    for (const item of cartItems) {
+      const { data: product, error } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.id)
+        .single();
+
+      if (error || !product) {
+        setLoading(false);
+        alert(`Product not found: ${item.name}`);
+        return;
+      }
+
+      if (product.stock < item.quantity) {
+        setLoading(false);
+        alert(`${item.name} is out of stock.`);
+        return;
+      }
+
+      await supabase
+        .from("products")
+        .update({ stock: product.stock - item.quantity })
+        .eq("id", item.id);
+    }
+
+    clearCart();
+    setSuccess(true);
+    setTimeout(() => navigate("/"), 3000);
+    setLoading(false);
   };
 
   if (success) {

@@ -1,33 +1,35 @@
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./Components/Navbar";
-import Header from "./Components/Header";
-import Footer from "./Components/Footer";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import Storefront from "@/pages/Storefront";
+import Cart from "@/pages/Cart";
+import Checkout from "@/pages/Checkout";
+import CustomerOrdersPage from "@/pages/CustomerOrdersPage";
+import MerchantDashboard from "@/pages/MerchantDashboard";
+import AdminOrdersPage from "@/pages/AdminOrdersPage";
+import AddProduct from "@/pages/AddMerchantProduct";
+import EditProduct from "@/pages/EditMerchantProduct";
+import Navbar from "@/components/Navbar"; // includes NavCart
 
-import Home from "./Pages/Home";
-import Cart from "./Pages/Cart";
-import ProductDetail from "./Pages/ProductDetail";
-import Checkout from "./Pages/Checkout";
-import AdminOrders from "./Pages/AdminOrders";
-import HashPasswordTool from "./utils/HashPasswordTool";
 function App() {
   return (
-    <>
-      <Navbar />
-      <Header />
+    <Router>
+      {/* Toast notifications */}
+      <Toaster position="top-right" />
 
-      {/* 🔐 TEMPORARY TOOL TO HASH PASSWORD */}
-      <HashPasswordTool />
+      {/* Main Layout */}
+      <Navbar />
 
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Storefront />} />
         <Route path="/cart" element={<Cart />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/checkout" element={<Checkout />} />
-        <Route path="/admin/orders" element={<AdminOrders />} />
+        <Route path="/my-orders" element={<CustomerOrdersPage />} />
+        <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+        <Route path="/merchant/add-product" element={<AddProduct />} />
+        <Route path="/merchant/edit-product/:id" element={<EditProduct />} />
+        <Route path="/admin/orders" element={<AdminOrdersPage />} />
       </Routes>
-
-      <Footer />
-    </>
+    </Router>
   );
 }
 

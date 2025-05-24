@@ -11,6 +11,7 @@
     "bcryptjs": "^3.0.2",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "react-hot-toast": "^2.5.2",
     "react-router-dom": "^7.6.0",
     "uuid": "^11.1.0",
     "zustand": "^4.5.7"

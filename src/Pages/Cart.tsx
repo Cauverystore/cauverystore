@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useCartStore } from "@/store/cartStore";
 
 export default function Cart() {
-  const { items, removeFromCart, clearCart } = useCartStore();
+  const { items, removeFromCart, clearCart, updateQuantity } = useCartStore();
 
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
@@ -28,7 +28,7 @@ export default function Cart() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between border-b pb-4"
+            className="flex flex-col sm:flex-row justify-between border-b pb-4 gap-4"
           >
             <div className="flex items-center space-x-4">
               <img
@@ -38,12 +38,29 @@ export default function Cart() {
               />
               <div>
                 <h3 className="text-lg font-medium">{item.name}</h3>
-                <p className="text-sm text-gray-500">
-                  ₹{item.price} x {item.quantity}
-                </p>
+                <p className="text-sm text-gray-500">₹{item.price}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() =>
+                    updateQuantity(item.id, Math.max(item.quantity - 1, 1))
+                  }
+                  className="px-2 bg-gray-200 rounded hover:bg-gray-300"
+                >
+                  −
+                </button>
+                <span className="min-w-[2rem] text-center">{item.quantity}</span>
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="px-2 bg-gray-200 rounded hover:bg-gray-300"
+                >
+                  +
+                </button>
+              </div>
+
               <p className="text-lg font-semibold">
                 ₹{item.price * item.quantity}
               </p>
@@ -58,7 +75,7 @@ export default function Cart() {
         ))}
       </div>
 
-      <div className="mt-8 flex justify-between items-center">
+      <div className="mt-8 flex justify-between items-center flex-wrap gap-4">
         <h3 className="text-xl font-bold">Total: ₹{total.toFixed(2)}</h3>
         <div className="space-x-4">
           <button
