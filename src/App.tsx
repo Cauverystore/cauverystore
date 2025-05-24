@@ -8,8 +8,7 @@ import Cart from "./Pages/Cart";
 import ProductDetail from "./Pages/ProductDetail";
 import Checkout from "./Pages/Checkout";
 import AdminOrders from "./Pages/AdminOrders";
-import HashPasswordTool from "./Utils/HashPasswordTool"; // ✅ for temporary use
-
+import HashPasswordTool from "./utils/HashPasswordTool";
 function App() {
   return (
     <>
