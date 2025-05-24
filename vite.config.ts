@@ -9,8 +9,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  root: '.', // 👈 ensure index.html is in root
-  build: {
-    outDir: 'dist', // 👈 default, but confirm this
-  },
 });
