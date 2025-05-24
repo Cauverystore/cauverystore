@@ -9,9 +9,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  root: '.', // must point to project root where index.html is
+  root: '.', // 👈 ensure index.html is in root
   build: {
-    outDir: 'dist',
+    outDir: 'dist', // 👈 default, but confirm this
   },
 });
- 
