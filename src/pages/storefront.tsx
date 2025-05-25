@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import Storefront from "./pages/Storefront";
 import { supabase } from "@/lib/supabase";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+
 
 interface Product {
   id: number;
