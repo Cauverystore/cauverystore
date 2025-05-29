@@ -1,143 +1,114 @@
 // src/pages/EditProduct.tsx
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-
-interface Category {
-  id: number;
-  title: string;
-  parent_id: number | null;
-}
+import { supabase } from "@/lib/supabaseClient";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "react-hot-toast";
+import LogoutButton from "@/components/LogoutButton";
 
 export default function EditProduct() {
-  const { id } = useParams();
+  const { productId } = useParams();
   const navigate = useNavigate();
 
+  const [product, setProduct] = useState<any>(null);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | "">("");
-  const [stock, setStock] = useState<number | "">("");
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
-  const [mainCategories, setMainCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Category[]>([]);
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState(0);
+  const [quantity, setQuantity] = useState(0);
+  const [category, setCategory] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase.from("categories").select("*");
-      if (!error && data) {
-        setMainCategories(data.filter((cat) => cat.parent_id === null));
-        setSubcategories(data.filter((cat) => cat.parent_id !== null));
-      }
-    };
-
     const fetchProduct = async () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("id", id)
+        .eq("id", productId)
         .single();
 
-      if (data && !error) {
-        setName(data.name);
-        setPrice(data.price);
-        setStock(data.stock);
-        setCategoryId(data.category_id);
-        setSubcategoryId(data.subcategory_id);
+      if (error) {
+        toast.error("Failed to fetch product.");
+        return;
       }
+
+      setProduct(data);
+      setName(data.name);
+      setDescription(data.description);
+      setPrice(data.price);
+      setQuantity(data.quantity);
+      setCategory(data.category);
+      setImageUrl(data.image_url);
     };
 
-    fetchCategories();
     fetchProduct();
-  }, [id]);
+  }, [productId]);
+
+  const handleImageUpload = async () => {
+    if (!imageFile) return imageUrl;
+
+    const fileExt = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `products/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .upload(filePath, imageFile, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      toast.error("Image upload failed.");
+      return imageUrl;
+    }
+
+    const { data } = supabase.storage
+      .from("product-images")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !stock || !categoryId || !subcategoryId) {
-      alert("Please fill in all fields.");
-      return;
-    }
+    setLoading(true);
+
+    const uploadedImageUrl = await handleImageUpload();
 
     const { error } = await supabase
       .from("products")
       .update({
         name,
+        description,
         price,
-        stock,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
+        quantity,
+        category,
+        image_url: uploadedImageUrl,
       })
-      .eq("id", id);
+      .eq("id", productId);
+
+    setLoading(false);
 
     if (error) {
-      alert("Failed to update product");
+      toast.error("Failed to update product.");
     } else {
-      navigate("/admin/products");
+      toast.success("Product updated successfully!");
+      navigate("/merchant/dashboard");
     }
   };
 
-  const filteredSubcategories = subcategories.filter(
-    (sub) => sub.parent_id === categoryId
-  );
-
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Edit Product</h2>
+    <div className="max-w-2xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Edit Product</h1>
+        <LogoutButton />
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          className="w-full p-2 border rounded"
-          placeholder="Product name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="w-full p-2 border rounded"
-          type="number"
-          placeholder="Price"
-          value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
-        />
-        <input
-          className="w-full p-2 border rounded"
-          type="number"
-          placeholder="Stock"
-          value={stock}
-          onChange={(e) => setStock(Number(e.target.value))}
-        />
-
-        <select
-          className="w-full p-2 border rounded"
-          value={categoryId ?? ""}
-          onChange={(e) => setCategoryId(Number(e.target.value))}
-        >
-          <option value="">Select Category</option>
-          {mainCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.title}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="w-full p-2 border rounded"
-          value={subcategoryId ?? ""}
-          onChange={(e) => setSubcategoryId(Number(e.target.value))}
-        >
-          <option value="">Select Subcategory</option>
-          {filteredSubcategories.map((sub) => (
-            <option key={sub.id} value={sub.id}>
-              {sub.title}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Update Product
-        </button>
-      </form>
-    </div>
-  );
-}
+        <div>
+          <Label>Name</L

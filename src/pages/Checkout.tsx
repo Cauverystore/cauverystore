@@ -1,145 +1,157 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCartStore } from "@/store/cartStore";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/Components/AuthProvider";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import toast from "react-hot-toast";
 
 export default function Checkout() {
-  const { cartItems, clearCart } = useCartStore();
-  const [customerName, setCustomerName] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const { items, getTotal, clearCart } = useCartStore();
 
-  const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customerName || !email || !address) return;
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [pincode, setPincode] = useState("");
+
+  useEffect(() => {
+    if (!user) {
+      toast.error("You must be logged in to checkout.");
+      navigate("/login");
+    }
+  }, [user, navigate]);
+
+  const handlePlaceOrder = async () => {
+    if (!fullName || !phone || !street || !city || !pincode) {
+      toast.error("Please fill in all address fields.");
+      return;
+    }
+
+    if (items.length === 0) {
+      toast.error("Cart is empty.");
+      return;
+    }
 
     setLoading(true);
 
-    // 1. Create new order
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert([
-        {
-          customer_name: customerName,
-          email,
-          address,
-          total_amount: total,
-          items: JSON.stringify(cartItems),
-        },
-      ])
-      .select()
-      .single();
+    const address = { fullName, phone, street, city, pincode };
 
-    if (orderError || !order) {
-      setLoading(false);
-      alert("Order creation failed.");
-      return;
+    const { error: orderError } = await supabase.from("orders").insert([
+      {
+        User_id: user.id,
+        items: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        total: getTotal(),
+        status: "pending",
+        address,
+      },
+    ]);
+
+    for (const item of items) {
+      await supabase.rpc("decrement_quantity", {
+        pid: item.id,
+        qty: item.quantity,
+      });
     }
 
-    // 2. Insert order items
-    const orderItemsPayload = cartItems.map((item) => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name,
-      quantity: item.quantity,
-      unit_price: item.price,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .insert(orderItemsPayload);
-
-    if (itemsError) {
-      setLoading(false);
-      alert("Order items failed to save.");
-      return;
-    }
-
-    // 3. Deduct stock
-    for (const item of cartItems) {
-      const { data: product, error } = await supabase
-        .from("products")
-        .select("stock")
-        .eq("id", item.id)
-        .single();
-
-      if (error || !product) {
-        setLoading(false);
-        alert(`Product not found: ${item.name}`);
-        return;
-      }
-
-      if (product.stock < item.quantity) {
-        setLoading(false);
-        alert(`${item.name} is out of stock.`);
-        return;
-      }
-
-      await supabase
-        .from("products")
-        .update({ stock: product.stock - item.quantity })
-        .eq("id", item.id);
-    }
-
-    clearCart();
-    setSuccess(true);
-    setTimeout(() => navigate("/"), 3000);
     setLoading(false);
+
+    if (orderError) {
+      toast.error("Failed to place order.");
+    } else {
+      clearCart();
+      toast.success("Order placed successfully!");
+      navigate("/checkout-success");
+    }
   };
 
-  if (success) {
-    return (
-      <div className="p-6 text-center">
-        <h2 className="text-2xl font-semibold text-green-700 mb-2">
-          ✅ Order Placed Successfully!
-        </h2>
-        <p>You will be redirected to the homepage shortly.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">Checkout</h2>
+    <div className="p-4 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6">Checkout</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Address Fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <input
           type="text"
           placeholder="Full Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-          required
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          className="border p-2 rounded w-full"
         />
         <input
-          type="email"
-          placeholder="Email Address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-          required
+          type="text"
+          placeholder="Phone Number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="border p-2 rounded w-full"
         />
-        <textarea
-          placeholder="Shipping Address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-          required
+        <input
+          type="text"
+          placeholder="Street Address"
+          value={street}
+          onChange={(e) => setStreet(e.target.value)}
+          className="border p-2 rounded w-full md:col-span-2"
         />
-        <div className="font-semibold text-right">Total: ₹{total.toFixed(2)}</div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-        >
-          {loading ? "Placing Order..." : "Place Order"}
-        </button>
-      </form>
+        <input
+          type="text"
+          placeholder="City"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className="border p-2 rounded w-full"
+        />
+        <input
+          type="text"
+          placeholder="Pincode"
+          value={pincode}
+          onChange={(e) => setPincode(e.target.value)}
+          className="border p-2 rounded w-full"
+        />
+      </div>
+
+      {/* Order Summary */}
+      {items.length === 0 ? (
+        <p className="text-gray-600">Your cart is empty.</p>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between bg-white rounded-lg shadow p-4"
+              >
+                <div>
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    ₹{item.price} × {item.quantity}
+                  </p>
+                </div>
+                <div className="text-right font-medium">
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-right text-xl font-semibold mt-6">
+            Total: ₹{getTotal().toFixed(2)}
+          </div>
+
+          <div className="text-right mt-4">
+            <Button className="w-full sm:w-auto" onClick={handlePlaceOrder} disabled={loading}>
+              {loading ? "Placing Order..." : "Place Order"}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

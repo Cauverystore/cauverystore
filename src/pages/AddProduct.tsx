@@ -1,122 +1,149 @@
-// src/pages/AddProduct.tsx
-
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-interface Category {
-  id: number;
-  title: string;
-  parent_id: number | null;
-}
+import { supabase } from "@/lib/supabaseClient";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { v4 as uuidv4 } from "uuid";
 
 export default function AddProduct() {
   const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | "">("");
-  const [stock, setStock] = useState<number | "">("");
-  const [mainCategories, setMainCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Category[]>([]);
-  const [categoryId, setCategoryId] = useState<number | null>(null);
-  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
+  const [price, setPrice] = useState<number>(0);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [category, setCategory] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase.from("categories").select("*");
-      if (!error && data) {
-        setMainCategories(data.filter((cat) => cat.parent_id === null));
-        setSubcategories(data.filter((cat) => cat.parent_id !== null));
-      }
-    };
-    fetchCategories();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price || !stock || !categoryId || !subcategoryId) {
-      alert("Please fill in all fields.");
+    setErrorMsg("");
+    setLoading(true);
+
+    const user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      setErrorMsg("You must be logged in to add a product.");
+      setLoading(false);
       return;
     }
 
-    const { error } = await supabase.from("products").insert([
-      {
-        name,
-        price,
-        stock,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
-      },
-    ]);
+    if (!imageFile) {
+      setErrorMsg("Please upload an image.");
+      setLoading(false);
+      return;
+    }
 
-    if (error) {
-      alert("Failed to add product");
-    } else {
-      navigate("/admin/products");
+    try {
+      // Upload image
+      const imageExt = imageFile.name.split(".").pop();
+      const fileName = `${uuidv4()}.${imageExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, imageFile);
+
+      if (uploadError) throw uploadError;
+
+      const imageUrl = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName).data.publicUrl;
+
+      // Insert product
+      const { error: insertError } = await supabase.from("products").insert([
+        {
+          name,
+          price,
+          quantity,
+          category,
+          image_url: imageUrl,
+          merchant_id: user.id,
+        },
+      ]);
+
+      if (insertError) throw insertError;
+
+      navigate("/merchant-dashboard");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredSubcategories = subcategories.filter(
-    (sub) => sub.parent_id === categoryId
-  );
-
   return (
-    <div className="p-4 max-w-xl mx-auto">
-      <h2 className="text-2xl font-semibold mb-4">Add Product</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          className="w-full p-2 border rounded"
-          placeholder="Product name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="w-full p-2 border rounded"
-          type="number"
-          placeholder="Price"
-          value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
-        />
-        <input
-          className="w-full p-2 border rounded"
-          type="number"
-          placeholder="Stock"
-          value={stock}
-          onChange={(e) => setStock(Number(e.target.value))}
-        />
+    <ProtectedRoute allowedRoles={["merchant"]}>
+      <div className="p-6 max-w-xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-green-700">Add New Product</h1>
 
-        <select
-          className="w-full p-2 border rounded"
-          value={categoryId ?? ""}
-          onChange={(e) => setCategoryId(Number(e.target.value))}
-        >
-          <option value="">Select Category</option>
-          {mainCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.title}
-            </option>
-          ))}
-        </select>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block font-medium">Product Name</label>
+            <input
+              type="text"
+              className="w-full border px-3 py-2 rounded"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
 
-        <select
-          className="w-full p-2 border rounded"
-          value={subcategoryId ?? ""}
-          onChange={(e) => setSubcategoryId(Number(e.target.value))}
-        >
-          <option value="">Select Subcategory</option>
-          {filteredSubcategories.map((sub) => (
-            <option key={sub.id} value={sub.id}>
-              {sub.title}
-            </option>
-          ))}
-        </select>
+          <div>
+            <label className="block font-medium">Price (₹)</label>
+            <input
+              type="number"
+              className="w-full border px-3 py-2 rounded"
+              value={price}
+              onChange={(e) => setPrice(parseFloat(e.target.value))}
+              min="0"
+              step="0.01"
+              required
+            />
+          </div>
 
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          Add Product
-        </button>
-      </form>
-    </div>
+          <div>
+            <label className="block font-medium">Quantity</label>
+            <input
+              type="number"
+              className="w-full border px-3 py-2 rounded"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value))}
+              min="1"
+              max="1000"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium">Category</label>
+            <input
+              type="text"
+              className="w-full border px-3 py-2 rounded"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="e.g., Groceries, Clothing"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium">Product Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              required
+            />
+          </div>
+
+          {errorMsg && <p className="text-red-600">{errorMsg}</p>}
+
+          <button
+            type="submit"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            disabled={loading}
+          >
+            {loading ? "Adding..." : "Add Product"}
+          </button>
+        </form>
+      </div>
+    </ProtectedRoute>
   );
 }

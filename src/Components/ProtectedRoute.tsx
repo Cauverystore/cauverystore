@@ -1,72 +1,50 @@
-import { Routes, Route } from 'react-router-dom';
-import ProtectedRoute from './components/ProtectedRoute';
+import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { supabase } from "@/lib/SupabaseClient";
 
-import Header from './components/Header';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+type Props = {
+  children: React.ReactNode;
+  allowedRoles: string[];
+};
 
-import Home from './Pages/Home';
-import Cart from './Pages/Cart';
-import ProductDetail from './Pages/ProductDetail';
-import Checkout from './Pages/Checkout';
-import Login from './Pages/Login';
-import MerchantDashboard from './Pages/MerchantDashboard';
-import AddProduct from './Pages/AddProduct';
-import OrderManagement from './Pages/OrderManagement';
-import NotFound from './Pages/NotFound';
+const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
-function App() {
-  return (
-    <>
-      {/* Top navigation and header remain always visible */}
-      <Header />
-      <Navbar />
+  useEffect(() => {
+    const checkAccess = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      {/* Route definitions */}
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/login" element={<Login />} />
+      if (!session) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
 
-        {/* Merchant protected routes */}
-        <Route 
-          path="/merchant/dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={['merchant']}>
-              <MerchantDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/merchant/add-product" 
-          element={
-            <ProtectedRoute allowedRoles={['merchant']}>
-              <AddProduct />
-            </ProtectedRoute>
-          } 
-        />
+      const userId = session.user.id;
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
 
-        {/* Admin protected route */}
-        <Route 
-          path="/admin/orders" 
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <OrderManagement />
-            </ProtectedRoute>
-          } 
-        />
+      if (error || !profile) {
+        setAuthorized(false);
+      } else {
+        setAuthorized(allowedRoles.includes(profile.role));
+      }
 
-        {/* Fallback 404 Not Found route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      setLoading(false);
+    };
 
-      {/* Footer remains at the bottom on all pages */}
-      <Footer />
-    </>
-  );
-}
+    checkAccess();
+  }, [allowedRoles]);
 
-export default App;
+  if (loading) return <div className="text-center p-8">Checking access...</div>;
+
+  return authorized ? <>{children}</> : <Navigate to="/not-authorized" />;
+};
+
+export default ProtectedRoute;
