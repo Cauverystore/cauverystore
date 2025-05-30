@@ -111,4 +111,4 @@ export default function EditProduct() {
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <Label>Name</L
+          <Label>Name</L>
