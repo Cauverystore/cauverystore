@@ -143,6 +143,7 @@ export default function EditProduct() {
             type="number"
             value={price}
             onChange={(e) => setPrice(parseFloat(e.target.value))}
+            placeholder="Enter price"
           />
         </div>
 
@@ -155,6 +156,7 @@ export default function EditProduct() {
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(parseInt(e.target.value))}
+            placeholder="Enter stock quantity"
           />
         </div>
 
@@ -166,27 +168,25 @@ export default function EditProduct() {
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="E.g. Groceries, Fashion, Electronics"
+            placeholder="Enter category"
           />
         </div>
 
         <div>
           <Label htmlFor="image" className="block mb-1 font-medium">
-            Image (optional)
+            Product Image
           </Label>
           <Input
             id="image"
             type="file"
-            accept="image/*"
-            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+            onChange={(e) =>
+              setImageFile(e.target.files ? e.target.files[0] : null)
+            }
           />
-          {imageUrl && (
-            <img src={imageUrl} alt="Product" className="w-32 mt-2" />
-          )}
         </div>
 
         <Button type="submit" disabled={loading}>
-          {loading ? "Updating..." : "Update Product"}
+          {loading ? "Saving..." : "Update Product"}
         </Button>
       </form>
     </div>
