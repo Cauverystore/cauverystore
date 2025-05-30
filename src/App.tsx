@@ -1,4 +1,5 @@
 // App.tsx final clean-up: confirming Storefront removed
+// Deployment sanity fix
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
