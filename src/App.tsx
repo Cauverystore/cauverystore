@@ -1,10 +1,10 @@
-// Complete App.tsx with updated Home path and all routes
+// App.tsx final clean-up: confirming Storefront removed
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import { AuthProvider } from "@/Components/AuthProvider";
-import Navbar from "@/components/Navbar"; // ✅ Matches actual folder name
+import Navbar from "@/Components/Navbar"; // ✅ Matches actual folder name
 
 // General Pages
 import Home from "@/pages/Home";
