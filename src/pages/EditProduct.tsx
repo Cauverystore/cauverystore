@@ -111,4 +111,15 @@ export default function EditProduct() {
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <Label>Name</L>
+    
+    <Label htmlFor="name" className="block mb-1 font-medium">
+  Name
+</Label>
+<input
+  id="name"
+  type="text"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  className="w-full p-2 border rounded"
+/>
+
