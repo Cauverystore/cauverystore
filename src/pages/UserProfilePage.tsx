@@ -1,96 +1,103 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
-import LogoutButton from "@/components/LogoutButton";
-import toast from "react-hot-toast";
+import { supabase } from "@/lib/SupabaseClient";
+import { useNavigate } from "react-router-dom";
 
-export default function UserProfilePage() {
-  const { userId } = useParams();
+const UserProfilePage = () => {
   const [profile, setProfile] = useState<any>(null);
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/login");
+        return;
+      }
+
+      const userId = session.user.id;
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
 
-      if (error || !data) {
-        toast.error("User not found.");
+      if (error) {
+        console.error("Error loading profile:", error);
+        setError("Failed to load profile.");
       } else {
         setProfile(data);
+        setName(data.name || "");
       }
 
       setLoading(false);
     };
 
     fetchProfile();
-  }, [userId]);
+  }, [navigate]);
 
-  if (loading) return <div className="p-4">Loading profile...</div>;
+  const handleSave = async () => {
+    if (!profile) return;
 
-  if (!profile) {
-    return (
-      <div className="p-4 max-w-2xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">User Profile</h2>
-          <LogoutButton />
-        </div>
-        <p className="text-red-500">Profile not found or unavailable.</p>
-      </div>
-    );
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ name })
+      .eq("id", profile.id);
+
+    if (error) {
+      console.error("Error saving profile:", error);
+      setError("Failed to save changes.");
+    }
+
+    setSaving(false);
+  };
+
+  if (loading) {
+    return <div className="text-center py-10">Loading profile...</div>;
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">User Profile</h2>
-        <LogoutButton />
-      </div>
+    <div className="max-w-lg mx-auto mt-10 bg-white p-6 shadow rounded">
+      <h1 className="text-2xl font-bold mb-6 text-green-700">Your Profile</h1>
 
-      <div className="bg-white rounded-xl shadow p-6 space-y-4">
-        {profile.avatar_url && (
-          <div className="text-center">
-            <img
-              src={profile.avatar_url}
-              alt="Avatar"
-              className="w-24 h-24 rounded-full object-cover mx-auto"
-            />
-          </div>
-        )}
+      {error && <div className="text-red-600 text-sm mb-4">{error}</div>}
+
+      <div className="space-y-4">
         <div>
-          <p className="text-sm text-gray-500">Name</p>
-          <p className="text-lg font-medium">{profile.name || "N/A"}</p>
+          <label className="block text-sm font-medium">Email</label>
+          <p className="text-gray-700">{profile.email}</p>
         </div>
+
         <div>
-          <p className="text-sm text-gray-500">Bio</p>
-          <p className="text-base text-gray-700">{profile.bio || "No bio available."}</p>
+          <label className="block text-sm font-medium">Role</label>
+          <p className="text-gray-700">{profile.role}</p>
         </div>
+
         <div>
-          <p className="text-sm text-gray-500">Age</p>
-          <p className="text-base">{profile.age || "Unknown"}</p>
+          <label className="block text-sm font-medium">Name</label>
+          <input
+            type="text"
+            value={name}
+            className="mt-1 w-full border rounded px-3 py-2"
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
-        <div>
-          <p className="text-sm text-gray-500">Role</p>
-          <span className="inline-block px-2 py-1 rounded-full text-sm bg-blue-100 text-blue-700 capitalize">
-            {profile.role}
-          </span>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Status</p>
-          <span
-            className={`inline-block px-2 py-1 rounded-full text-sm ${
-              profile.status === "active"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {profile.status}
-          </span>
-        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
       </div>
     </div>
   );
-}
+};
+
+export default UserProfilePage;

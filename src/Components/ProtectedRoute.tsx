@@ -1,50 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { supabase } from "@/lib/SupabaseClient";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/Components/AuthProvider";
+import { useNavigate } from "react-router-dom";
 
-type Props = {
+interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles: string[];
-};
+  allowedRoles?: string[]; // optional: e.g., ["admin", "merchant"]
+}
 
-const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
-  const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
+export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const checkAccess = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        setAuthorized(false);
-        setLoading(false);
+    const verifyAccess = async () => {
+      if (!user) {
+        navigate("/login");
         return;
       }
 
-      const userId = session.user.id;
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .single();
+      if (allowedRoles && allowedRoles.length > 0) {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role, status")
+          .eq("id", user.id)
+          .single();
 
-      if (error || !profile) {
-        setAuthorized(false);
-      } else {
-        setAuthorized(allowedRoles.includes(profile.role));
+        if (error || !profile || profile.status !== "active") {
+          navigate("/not-authorized");
+          return;
+        }
+
+        if (!allowedRoles.includes(profile.role)) {
+          navigate("/not-authorized");
+          return;
+        }
       }
 
-      setLoading(false);
+      setChecking(false);
     };
 
-    checkAccess();
-  }, [allowedRoles]);
+    verifyAccess();
+  }, [user, allowedRoles, navigate]);
 
-  if (loading) return <div className="text-center p-8">Checking access...</div>;
+  if (checking) return <div className="p-4 text-center">Checking permissions...</div>;
 
-  return authorized ? <>{children}</> : <Navigate to="/not-authorized" />;
-};
-
-export default ProtectedRoute;
+  return <>{children}</>;
+}

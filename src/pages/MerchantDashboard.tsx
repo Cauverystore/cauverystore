@@ -1,167 +1,152 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/SupabaseClient";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { format } from "date-fns";
+import LogoutButton from "@/components/LogoutButton";
 
-type Product = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image_url: string;
-};
-
-type Order = {
-  id: string;
-  created_at: string;
-  total: number;
-  customer_name: string;
-};
-
-const TIME_FILTERS = {
-  Today: () => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString();
-  },
-  "Last 7 Days": () => {
-    const now = new Date();
-    now.setDate(now.getDate() - 7);
-    return now.toISOString();
-  },
-  "This Month": () => {
-    const now = new Date();
-    now.setDate(1);
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString();
-  },
-};
-
-export default function MerchantDashboard() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [lowStock, setLowStock] = useState<Product[]>([]);
-  const [filter, setFilter] = useState<keyof typeof TIME_FILTERS>("Today");
-
+const MerchantDashboard = () => {
+  const [products, setProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [merchantId, setMerchantId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchMerchantData = async () => {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) return;
+    const fetchData = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-      // Fetch products
-      const { data: prodData } = await supabase
-        .from("products")
-        .select("*")
-        .eq("merchant_id", user.id);
-
-      if (prodData) {
-        setProducts(prodData);
-        const lowStockItems = prodData.filter((p) => p.quantity < 5);
-        setLowStock(lowStockItems);
+      if (!session) {
+        navigate("/login");
+        return;
       }
 
-      // Fetch latest orders
-      const sinceDate = TIME_FILTERS[filter]();
+      const userId = session.user.id;
+      setMerchantId(userId);
+
+      const { data: productData } = await supabase
+        .from("products")
+        .select("*")
+        .eq("merchant_id", userId);
+
       const { data: orderData } = await supabase
         .from("orders")
         .select("*")
-        .gte("created_at", sinceDate)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        .order("created_at", { ascending: false });
 
-      if (orderData) setOrders(orderData);
+      setProducts(productData || []);
+      setOrders(
+        (orderData || []).filter((order) =>
+          order.items?.some((item: any) => item.merchant_id === userId)
+        )
+      );
+
+      setLoading(false);
     };
 
-    fetchMerchantData();
-  }, [filter]);
+    fetchData();
+  }, [navigate]);
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("products").delete().eq("id", id);
+    setProducts(products.filter((p) => p.id !== id));
+  };
+
+  const handleQuantityChange = async (id: string, newQty: number) => {
+    await supabase.from("products").update({ stock: newQty }).eq("id", id);
+    setProducts(
+      products.map((p) =>
+        p.id === id ? { ...p, stock: newQty } : p
+      )
+    );
+  };
+
+  if (loading) return <div className="text-center py-6">Loading dashboard...</div>;
 
   return (
-    <ProtectedRoute allowedRoles={["merchant"]}>
-      <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gray-100 p-4 space-y-10">
+      {/* Header with Logout */}
+      <div className="flex justify-between items-center max-w-6xl mx-auto mb-6">
         <h1 className="text-2xl font-bold text-green-700">Merchant Dashboard</h1>
+        <LogoutButton />
+      </div>
 
-        {/* Low Stock Alerts */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">⚠️ Low Stock Products</h2>
-          {lowStock.length > 0 ? (
-            <ul className="list-disc list-inside text-red-600">
-              {lowStock.map((item) => (
-                <li key={item.id}>
-                  {item.name} – Only {item.quantity} left!
-                </li>
-              ))}
-            </ul>
+      <section className="max-w-6xl mx-auto">
+        <h2 className="text-xl font-semibold mb-3">Your Products</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {products.length === 0 ? (
+            <p>No products found.</p>
           ) : (
-            <p className="text-green-600">All products have sufficient stock.</p>
-          )}
-        </div>
-
-        {/* Time Filter + Orders */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-semibold">🛒 Latest Orders</h2>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as keyof typeof TIME_FILTERS)}
-              className="border border-gray-300 rounded px-2 py-1"
-            >
-              {Object.keys(TIME_FILTERS).map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
-              ))}
-            </select>
-          </div>
-          <ul className="space-y-2">
-            {orders.length > 0 ? (
-              orders.map((order) => (
-                <li key={order.id} className="border p-3 rounded shadow-sm">
-                  <div className="flex justify-between">
-                    <span>
-                      <strong>Customer:</strong> {order.customer_name}
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      {format(new Date(order.created_at), "dd MMM yyyy, hh:mm a")}
-                    </span>
-                  </div>
-                  <div>
-                    <strong>Total:</strong> ₹{order.total.toFixed(2)}
-                  </div>
-                </li>
-              ))
-            ) : (
-              <p className="text-gray-500">No orders in selected timeframe.</p>
-            )}
-          </ul>
-        </div>
-
-        {/* Product Summary */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">📦 Your Products</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="border p-3 rounded hover:shadow-md transition"
-              >
+            products.map((product) => (
+              <div key={product.id} className="bg-white p-4 rounded shadow">
                 <img
                   src={product.image_url}
                   alt={product.name}
                   className="w-full h-40 object-cover rounded mb-2"
                 />
-                <div className="font-semibold">{product.name}</div>
-                <div>₹{product.price}</div>
-                <div className={`mt-1 text-sm ${product.quantity < 5 ? "text-red-600" : "text-green-600"}`}>
-                  Stock: {product.quantity}
+                <h3 className="font-semibold text-lg">{product.name}</h3>
+                <p className="text-sm text-gray-700 mb-1">₹{product.price}</p>
+                <div className="mb-2">
+                  <label className="text-sm text-gray-600">Stock Quantity:</label>
+                  <input
+                    type="number"
+                    value={product.stock}
+                    min={0}
+                    max={1000}
+                    className="border rounded px-2 py-1 w-20 ml-2"
+                    onChange={(e) => handleQuantityChange(product.id, Number(e.target.value))}
+                  />
+                </div>
+                <p className={`text-sm mb-2 ${product.stock < 5 ? "text-red-600 font-semibold" : "text-green-600"}`}>
+                  {product.stock < 5 ? "Low stock!" : "In stock"}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => navigate(`/merchant/edit-product/${product.id}`)}
+                    className="text-blue-600 hover:underline text-sm"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(product.id)}
+                    className="text-red-600 hover:underline text-sm"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
-      </div>
-    </ProtectedRoute>
+      </section>
+
+      <section className="max-w-6xl mx-auto">
+        <h2 className="text-xl font-semibold mb-3">Latest 5 Orders</h2>
+        <div className="bg-white p-4 shadow rounded">
+          {orders.length === 0 ? (
+            <p>No recent orders.</p>
+          ) : (
+            <ul className="space-y-3">
+              {orders.slice(0, 5).map((order) => (
+                <li key={order.id} className="border-b pb-2">
+                  <p className="text-sm">
+                    Order <strong>#{order.id}</strong> • {new Date(order.created_at).toLocaleString()}
+                  </p>
+                  <ul className="ml-4 list-disc text-sm text-gray-600">
+                    {order.items
+                      .filter((item: any) => item.merchant_id === merchantId)
+                      .map((item: any) => (
+                        <li key={item.product_id}>
+                          {item.name} × {item.quantity}
+                        </li>
+                      ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    </div>
   );
-}
+};
+
+export default MerchantDashboard;

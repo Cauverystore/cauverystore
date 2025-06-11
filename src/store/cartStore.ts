@@ -5,46 +5,36 @@ interface CartItem {
   id: string;
   name: string;
   price: number;
-  image_url: string;
   quantity: number;
 }
 
 interface CartStore {
-  items: CartItem[];
-  addItem: (item: CartItem) => void;
-  removeItem: (id: string) => void;
+  cart: CartItem[];
+  addToCart: (item: CartItem) => void;
+  removeFromCart: (id: string) => void;
   clearCart: () => void;
-  getTotal: () => number;
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
-      items: [],
-      addItem: (item) => {
-        const items = get().items;
-        const existing = items.find((i) => i.id === item.id);
-
+      cart: [],
+      addToCart: (item) => {
+        const existing = get().cart.find((i) => i.id === item.id);
         if (existing) {
-          const updated = items.map((i) =>
-            i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
-          );
-          set({ items: updated });
+          set({
+            cart: get().cart.map((i) =>
+              i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+            ),
+          });
         } else {
-          set({ items: [...items, item] });
+          set({ cart: [...get().cart, item] });
         }
       },
-      removeItem: (id) => {
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        }));
-      },
-      clearCart: () => set({ items: [] }),
-      getTotal: () =>
-        get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      removeFromCart: (id) =>
+        set({ cart: get().cart.filter((item) => item.id !== id) }),
+      clearCart: () => set({ cart: [] }),
     }),
-    {
-      name: "cauverystore-cart", // Local storage key
-    }
+    { name: "cart-storage" } // persist to localStorage
   )
 );

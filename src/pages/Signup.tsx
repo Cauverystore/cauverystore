@@ -1,82 +1,88 @@
-import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("customer"); // Default role
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
+    setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (signUpError || !data.user) {
+      setLoading(false);
+      setError(signUpError?.message || 'Signup failed');
       return;
     }
 
-    const user = data.user;
+    const userId = data.user.id;
 
-    if (user) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: user.id,
-        role,
-      });
+    // Insert into profiles table with default role
+    const { error: profileError } = await supabase.from('profiles').insert([
+      {
+        id: userId,
+        email,
+        role: 'customer', // default role assigned here
+        status: 'active', // default active status
+      },
+    ]);
 
-      if (profileError) {
-        setError("Signup succeeded, but profile creation failed.");
-        console.error(profileError.message);
-      } else {
-        alert("Signup successful! Please check your email to confirm.");
-        navigate("/login");
-      }
+    setLoading(false);
+
+    if (profileError) {
+      setError('Signup succeeded, but profile creation failed.');
+      return;
     }
+
+    toast.success('Signup successful. You can now log in.');
+    navigate('/login');
   };
 
   return (
-    <div className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">Sign Up</h1>
-      <form onSubmit={handleSignup} className="space-y-4">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+      <form
+        onSubmit={handleSignup}
+        className="p-6 rounded-xl shadow-lg w-full max-w-sm bg-white space-y-4"
+      >
+        <h2 className="text-2xl font-semibold text-center text-green-700">Create an Account</h2>
+
         <input
-          className="w-full border p-2 rounded"
           type="email"
           placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={e => setEmail(e.target.value)}
+          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           required
         />
+
         <input
-          className="w-full border p-2 rounded"
           type="password"
           placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={e => setPassword(e.target.value)}
+          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
           required
         />
-        <select
-          className="w-full border p-2 rounded"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option value="customer">Customer</option>
-          <option value="merchant">Merchant</option>
-          <option value="admin">Admin</option>
-        </select>
 
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
         <button
           type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded"
+          disabled={loading}
+          className="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-md transition duration-200"
         >
-          Sign Up
+          {loading ? 'Signing up...' : 'Sign Up'}
         </button>
       </form>
     </div>

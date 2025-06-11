@@ -1,159 +1,100 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/Components/AuthProvider";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/SupabaseClient";
 import toast from "react-hot-toast";
-import LogoutButton from "@/components/LogoutButton";
 
-export default function ProfilePage() {
-  const { user } = useAuth();
+const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
+  const [name, setName] = useState("");
+  const [age, setAge] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
-  const [age, setAge] = useState<number | undefined>(undefined);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        toast.error("Failed to fetch profile.");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please log in.");
         return;
       }
 
-      setProfile(data);
-      setName(data.name || "");
-      setBio(data.bio || "");
-      setAge(data.age || undefined);
-      setAvatarUrl(data.avatar_url || null);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error || !data) {
+        toast.error("Failed to fetch profile.");
+      } else {
+        setProfile(data);
+        setName(data.name || "");
+        setAge(data.age || null);
+      }
+
       setLoading(false);
     };
 
     fetchProfile();
-  }, [user]);
+  }, []);
 
-  const handleSave = async () => {
-    if (!user) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSaving(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { error } = await supabase
       .from("profiles")
-      .update({ name, bio, age, avatar_url: avatarUrl })
-      .eq("id", user.id);
-
-    setSaving(false);
+      .update({ name, age })
+      .eq("id", session.user.id);
 
     if (error) {
-      toast.error("Failed to save profile.");
+      toast.error("Failed to update profile.");
     } else {
       toast.success("Profile updated!");
     }
+
+    setSaving(false);
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    const fileExt = file.name.split(".").pop();
-    const filePath = `${user.id}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
-
-    if (uploadError) {
-      toast.error("Failed to upload image.");
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    setAvatarUrl(data.publicUrl);
-    toast.success("Avatar uploaded!");
-  };
-
-  if (loading) return <div className="p-4">Loading profile...</div>;
+  if (loading) return <div className="text-center py-10">Loading profile...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">My Profile</h2>
-        <LogoutButton />
-      </div>
-
-      {avatarUrl && (
-        <img
-          src={avatarUrl}
-          alt="Avatar"
-          className="w-24 h-24 rounded-full object-cover mx-auto mb-4"
-        />
-      )}
-
-      <div className="space-y-4">
+    <div className="max-w-xl mx-auto p-6 bg-white rounded shadow mt-10">
+      <h1 className="text-2xl font-bold mb-6 text-green-700">Your Profile</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block font-semibold">Upload Avatar</label>
-          <input type="file" accept="image/*" onChange={handleAvatarUpload} />
-        </div>
-
-        <div>
-          <label className="block font-semibold">Email</label>
+          <label className="block text-sm font-medium">Name</label>
           <input
-            className="w-full border p-2 rounded bg-gray-100"
-            value={profile.email || user.email}
-            disabled
-          />
-        </div>
-        <div>
-          <label className="block font-semibold">Role</label>
-          <input
-            className="w-full border p-2 rounded bg-gray-100"
-            value={profile.role}
-            disabled
-          />
-        </div>
-        <div>
-          <label className="block font-semibold">Name</label>
-          <input
-            className="w-full border p-2 rounded"
+            type="text"
+            required
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="w-full border px-3 py-2 rounded mt-1"
           />
         </div>
+
         <div>
-          <label className="block font-semibold">Bio</label>
-          <textarea
-            className="w-full border p-2 rounded"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block font-semibold">Age</label>
+          <label className="block text-sm font-medium">Age</label>
           <input
             type="number"
-            className="w-full border p-2 rounded"
             value={age || ""}
             onChange={(e) => setAge(Number(e.target.value))}
+            className="w-full border px-3 py-2 rounded mt-1"
           />
         </div>
 
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded"
-          onClick={handleSave}
+          type="submit"
           disabled={saving}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
         >
-          {saving ? "Saving..." : "Save Profile"}
+          {saving ? "Saving..." : "Update Profile"}
         </button>
-      </div>
+      </form>
     </div>
   );
-}
+};
+
+export default Profile;

@@ -51,16 +51,18 @@ export default function CustomerDashboard() {
     fetchDashboard();
   }, [user, navigate]);
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  if (loading) return <div className="p-4 text-center">Loading...</div>;
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Customer Dashboard</h2>
+    <div className="min-h-screen bg-gray-100 p-4">
+      {/* Header */}
+      <div className="flex justify-between items-center max-w-4xl mx-auto mb-6">
+        <h2 className="text-2xl font-bold text-green-700">Customer Dashboard</h2>
         <LogoutButton />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Dashboard Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow p-4 text-center">
           <h3 className="text-lg font-semibold">Total Orders</h3>
           <p className="text-3xl mt-2 text-green-700">{orderCount}</p>

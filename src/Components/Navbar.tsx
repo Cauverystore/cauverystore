@@ -1,54 +1,82 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useCartStore } from "@/store/cartStore";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/SupabaseClient";
+import toast from "react-hot-toast";
+import CartIcon from "./CartIcon";
 
-export default function Navbar() {
-  const { items } = useCartStore();
-  const [menuOpen, setMenuOpen] = useState(false);
+interface NavbarProps {
+  user: any;
+  role: string | null;
+}
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+const Navbar: React.FC<NavbarProps> = ({ user, role }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error("Logout failed.");
+    } else {
+      toast.success("Logged out.");
+      navigate("/login");
+    }
+  };
 
   return (
-    <nav className="bg-white shadow-md px-4 py-3 sticky top-0 z-50">
-      <div className="flex justify-between items-center">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-green-700">
-          CauveryStore
+    <nav className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
+      {/* Logo / Home Link */}
+      <Link to="/" className="text-xl font-bold text-green-700">
+        Cauvery Store
+      </Link>
+
+      {/* Navigation Links */}
+      <div className="flex items-center gap-4 text-sm">
+        <Link to="/products" className="hover:text-green-600">
+          Products
         </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden sm:flex items-center gap-6">
-          <Link to="/cart" className="relative text-2xl">
-            🛒
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-3 bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-                {totalItems}
-              </span>
-            )}
+        {user && role === "merchant" && (
+          <Link to="/merchant" className="hover:text-green-600">
+            Merchant
           </Link>
-        </div>
+        )}
 
-        {/* Mobile Hamburger */}
-        <div className="sm:hidden">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="text-xl">
-            ☰
-          </button>
-        </div>
+        {user && role === "admin" && (
+          <Link to="/admin" className="hover:text-green-600">
+            Admin
+          </Link>
+        )}
+
+        {user && (
+          <>
+            <Link to="/profile" className="hover:text-green-600">
+              Profile
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-red-600 hover:text-red-800 font-medium"
+            >
+              Logout
+            </button>
+          </>
+        )}
+
+        {!user && (
+          <>
+            <Link to="/login" className="hover:text-green-600">
+              Login
+            </Link>
+            <Link to="/signup" className="hover:text-green-600">
+              Signup
+            </Link>
+          </>
+        )}
+
+        {/* Cart Icon (Always Visible) */}
+        <CartIcon />
       </div>
-
-      {/* Mobile Menu Dropdown */}
-      {menuOpen && (
-        <div className="sm:hidden mt-3 space-y-2">
-          <Link to="/cart" className="block relative text-lg" onClick={() => setMenuOpen(false)}>
-            🛒 Cart
-            {totalItems > 0 && (
-              <span className="ml-2 bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-                {totalItems}
-              </span>
-            )}
-          </Link>
-        </div>
-      )}
     </nav>
   );
-}
+};
+
+export default Navbar;

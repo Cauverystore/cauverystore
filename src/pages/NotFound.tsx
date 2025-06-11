@@ -1,58 +1,28 @@
-import { Routes, Route } from "react-router-dom";
-import Navbar from "./Components/Navbar";
-import Header from "./Components/Header";
-import Footer from "./Components/Footer";
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
-import Home from "./Pages/Home";
-import Cart from "./Pages/Cart";
-import ProductDetail from "./Pages/ProductDetail";
-import Checkout from "./Pages/Checkout";
-import Login from "./Pages/Login";
-import AdminOrders from "./Pages/AdminOrders";
-import MerchantDashboard from "./Pages/MerchantDashboard";
-import NotFound from "./Pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
+const NotFoundPage = () => {
+  useEffect(() => {
+    toast.error("Page not found.");
+  }, []);
 
-function App() {
   return (
-    <>
-      <Navbar />
-      <Header />
-
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/login" element={<Login />} />
-
-        {/* 🔐 Admin Protected Route */}
-        <Route
-          path="/admin/orders"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <AdminOrders />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* 🔐 Merchant Protected Route */}
-        <Route
-          path="/merchant/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={["merchant"]}>
-              <MerchantDashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ❌ Catch-all 404 Not Found */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-
-      <Footer />
-    </>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 px-4">
+      <div className="bg-white shadow p-8 rounded text-center max-w-md">
+        <h1 className="text-4xl font-bold text-red-600 mb-4">404</h1>
+        <p className="text-lg text-gray-700 mb-6">
+          Sorry, the page you are looking for doesn't exist.
+        </p>
+        <Link
+          to="/"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Go to Home
+        </Link>
+      </div>
+    </div>
   );
-}
+};
 
-export default App;
+export default NotFoundPage;

@@ -1,194 +1,165 @@
-// src/pages/EditProduct.tsx
-
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "react-hot-toast";
-import LogoutButton from "@/components/LogoutButton";
+import { supabase } from "@/lib/SupabaseClient";
+import { useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
-export default function EditProduct() {
-  const { productId } = useParams();
-  const navigate = useNavigate();
-
+const EditProduct = () => {
+  const { id } = useParams();
   const [product, setProduct] = useState<any>(null);
   const [name, setName] = useState("");
+  const [price, setPrice] = useState<number>(0);
+  const [stock, setStock] = useState<number>(0);
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(0);
-  const [quantity, setQuantity] = useState(0);
-  const [category, setCategory] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProduct = async () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("id", productId)
+        .eq("id", id)
         .single();
 
-      if (error) {
+      if (error || !data) {
         toast.error("Failed to fetch product.");
         return;
       }
 
       setProduct(data);
       setName(data.name);
-      setDescription(data.description);
       setPrice(data.price);
-      setQuantity(data.quantity);
-      setCategory(data.category);
-      setImageUrl(data.image_url);
+      setStock(data.stock);
+      setDescription(data.description);
+      setLoading(false);
     };
 
     fetchProduct();
-  }, [productId]);
+  }, [id]);
 
   const handleImageUpload = async () => {
-    if (!imageFile) return imageUrl;
+    if (!image) return product.image_url;
 
-    const fileExt = imageFile.name.split(".").pop();
+    const fileExt = image.name.split(".").pop();
     const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `products/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error } = await supabase.storage
       .from("product-images")
-      .upload(filePath, imageFile, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+      .upload(fileName, image);
 
-    if (uploadError) {
+    if (error) {
       toast.error("Image upload failed.");
-      return imageUrl;
+      return product.image_url;
     }
 
-    const { data } = supabase.storage
-      .from("product-images")
-      .getPublicUrl(filePath);
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("product-images").getPublicUrl(fileName);
 
-    return data.publicUrl;
+    return publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
-    const uploadedImageUrl = await handleImageUpload();
+    const imageUrl = await handleImageUpload();
 
     const { error } = await supabase
       .from("products")
       .update({
         name,
-        description,
         price,
-        quantity,
-        category,
-        image_url: uploadedImageUrl,
+        stock,
+        description,
+        image_url: imageUrl,
       })
-      .eq("id", productId);
+      .eq("id", id);
 
-    setLoading(false);
-
-    if (error) {
-      toast.error("Failed to update product.");
+    if (!error) {
+      toast.success("Product updated!");
+      navigate("/merchant");
     } else {
-      toast.success("Product updated successfully!");
-      navigate("/merchant/dashboard");
+      toast.error("Update failed.");
+      console.error("Update error:", error);
     }
+
+    setSaving(false);
   };
 
+  if (loading) return <div className="text-center py-10">Loading product...</div>;
+
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Edit Product</h1>
-        <LogoutButton />
-      </div>
+    <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded shadow">
+      <h1 className="text-2xl font-bold mb-6 text-green-700">Edit Product</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <Label htmlFor="name" className="block mb-1 font-medium">
-            Name
-          </Label>
-          <Input
-            id="name"
+          <label className="block text-sm font-medium">Product Name</label>
+          <input
+            type="text"
+            required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Enter product name"
+            className="w-full border px-3 py-2 rounded mt-1"
           />
         </div>
 
         <div>
-          <Label htmlFor="description" className="block mb-1 font-medium">
-            Description
-          </Label>
-          <Textarea
-            id="description"
+          <label className="block text-sm font-medium">Price (₹)</label>
+          <input
+            type="number"
+            required
+            min={0}
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value))}
+            className="w-full border px-3 py-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Stock Quantity</label>
+          <input
+            type="number"
+            required
+            min={0}
+            max={1000}
+            value={stock}
+            onChange={(e) => setStock(Number(e.target.value))}
+            className="w-full border px-3 py-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Description</label>
+          <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Enter product description"
-          />
+            className="w-full border px-3 py-2 rounded mt-1"
+          ></textarea>
         </div>
 
         <div>
-          <Label htmlFor="price" className="block mb-1 font-medium">
-            Price
-          </Label>
-          <Input
-            id="price"
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(parseFloat(e.target.value))}
-            placeholder="Enter price"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="quantity" className="block mb-1 font-medium">
-            Quantity
-          </Label>
-          <Input
-            id="quantity"
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(parseInt(e.target.value))}
-            placeholder="Enter stock quantity"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="category" className="block mb-1 font-medium">
-            Category
-          </Label>
-          <Input
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="Enter category"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="image" className="block mb-1 font-medium">
-            Product Image
-          </Label>
-          <Input
-            id="image"
+          <label className="block text-sm font-medium">Replace Image (optional)</label>
+          <input
             type="file"
-            onChange={(e) =>
-              setImageFile(e.target.files ? e.target.files[0] : null)
-            }
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+            className="mt-1"
           />
         </div>
 
-        <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Update Product"}
-        </Button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+        >
+          {saving ? "Saving..." : "Update Product"}
+        </button>
       </form>
     </div>
   );
-}
+};
+
+export default EditProduct;

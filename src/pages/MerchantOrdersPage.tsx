@@ -1,129 +1,92 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { format } from "date-fns";
+import { supabase } from "@/lib/SupabaseClient";
+import toast from "react-hot-toast";
 
-type Order = {
+interface Order {
   id: string;
   created_at: string;
-  total: number;
-  customer_name: string;
-  products: {
-    product_id: string;
+  user_id: string;
+  items: {
+    id: string;
+    name: string;
+    merchant_id: string;
+    price: number;
     quantity: number;
-    product: {
-      name: string;
-      price: number;
-    };
   }[];
-};
+}
 
-export default function MerchantOrdersPage() {
+const MerchantOrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [merchantId, setMerchantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMerchantOrders = async () => {
-      setLoading(true);
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) return;
-
-      // Step 1: Get products belonging to this merchant
-      const { data: merchantProducts } = await supabase
-        .from("products")
-        .select("id")
-        .eq("merchant_id", user.id);
-
-      const merchantProductIds = merchantProducts?.map((p) => p.id) || [];
-
-      if (merchantProductIds.length === 0) {
-        setOrders([]);
-        setLoading(false);
+    const fetchOrders = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please login to view orders.");
         return;
       }
 
-      // Step 2: Get order items where product_id is in the merchant's products
-      const { data: orderItems } = await supabase
-        .from("order_items")
-        .select("order_id, quantity, product:product_id(name, price), orders!inner(id, created_at, customer_name, total)")
-        .in("product_id", merchantProductIds);
+      setMerchantId(session.user.id);
 
-      if (!orderItems) {
-        setOrders([]);
-        setLoading(false);
-        return;
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast.error("Failed to load orders.");
+        console.error(error);
+      } else {
+        setOrders(data || []);
       }
 
-      // Step 3: Group by order_id
-      const grouped = orderItems.reduce((acc: Record<string, Order>, item: any) => {
-        const { orders: order, ...rest } = item;
-
-        if (!acc[order.id]) {
-          acc[order.id] = {
-            id: order.id,
-            created_at: order.created_at,
-            total: order.total,
-            customer_name: order.customer_name,
-            products: [],
-          };
-        }
-
-        acc[order.id].products.push(rest);
-        return acc;
-      }, {});
-
-      setOrders(Object.values(grouped));
       setLoading(false);
     };
 
-    fetchMerchantOrders();
+    fetchOrders();
   }, []);
 
-  return (
-    <ProtectedRoute allowedRoles={["merchant"]}>
-      <div className="p-6 space-y-6">
-        <h1 className="text-2xl font-bold text-green-700">Your Orders</h1>
+  const getMerchantItems = (items: Order["items"]) =>
+    items.filter((item) => item.merchant_id === merchantId);
 
-        {loading ? (
-          <p className="text-gray-500">Loading orders...</p>
-        ) : orders.length === 0 ? (
-          <p className="text-gray-500">No orders found for your products.</p>
-        ) : (
-          <ul className="space-y-4">
-            {orders.map((order) => (
-              <li
-                key={order.id}
-                className="border rounded-lg p-4 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <div>
-                    <p className="font-semibold">Customer: {order.customer_name}</p>
-                    <p className="text-sm text-gray-500">
-                      {format(new Date(order.created_at), "dd MMM yyyy, hh:mm a")}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-green-600 font-semibold">
-                      ₹{order.total.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <p className="font-semibold mb-1">Products:</p>
-                  <ul className="ml-4 list-disc">
-                    {order.products.map((item, i) => (
-                      <li key={i}>
-                        {item.product.name} × {item.quantity} (
-                        ₹{item.product.price.toFixed(2)} each)
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </ProtectedRoute>
+  if (loading) return <div className="text-center py-10">Loading merchant orders...</div>;
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6 text-green-700">Merchant Order View</h1>
+
+      {orders.filter((order) => getMerchantItems(order.items).length > 0).length === 0 ? (
+        <p className="text-gray-600">No orders for your products yet.</p>
+      ) : (
+        orders.map((order) => {
+          const merchantItems = getMerchantItems(order.items);
+          if (merchantItems.length === 0) return null;
+
+          return (
+            <div key={order.id} className="mb-6 bg-white rounded shadow p-4">
+              <div className="flex justify-between text-sm text-gray-500 mb-2">
+                <span>Order ID: {order.id}</span>
+                <span>{new Date(order.created_at).toLocaleString()}</span>
+              </div>
+
+              <ul className="text-sm">
+                {merchantItems.map((item) => (
+                  <li key={item.id} className="flex justify-between border-b py-1">
+                    <span>
+                      {item.name} × {item.quantity}
+                    </span>
+                    <span>₹{item.price * item.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })
+      )}
+    </div>
   );
-}
+};
+
+export default MerchantOrdersPage;

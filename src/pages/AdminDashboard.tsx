@@ -1,5 +1,3 @@
-// src/pages/AdminDashboard.tsx
-
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/Components/AuthProvider";
 import { supabase } from "@/lib/supabaseClient";
@@ -87,7 +85,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-100 p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-6 max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold">Admin Dashboard</h2>
+        <h2 className="text-2xl font-bold text-green-700">Admin Dashboard</h2>
         <LogoutButton />
       </div>
 

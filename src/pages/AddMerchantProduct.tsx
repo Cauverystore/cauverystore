@@ -1,92 +1,146 @@
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useAuthStore } from "@/store/authStore";
+import { supabase } from "@/lib/SupabaseClient";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
-export default function AddMerchantProduct() {
-  const { userId } = useAuthStore();
+const AddMerchantProduct = () => {
   const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | "">("");
-  const [stock, setStock] = useState<number | "">("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [price, setPrice] = useState<number>(0);
+  const [stock, setStock] = useState<number>(0);
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
+
+  const handleImageUpload = async () => {
+    if (!image) return null;
+    const fileExt = image.name.split(".").pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const { data, error } = await supabase.storage
+      .from("product-images")
+      .upload(fileName, image);
+
+    if (error) {
+      toast.error("Image upload failed.");
+      return null;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("product-images").getPublicUrl(fileName);
+
+    return publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !name || !price || !stock || !imageFile) return;
+    setUploading(true);
 
-    const fileExt = imageFile.name.split(".").pop();
-    const filePath = `products/${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage
-      .from("product-images")
-      .upload(filePath, imageFile);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Session expired. Please login again.");
+      navigate("/login");
+      return;
+    }
 
-    if (uploadError) return alert("Image upload failed.");
+    const imageUrl = await handleImageUpload();
+    if (!imageUrl) {
+      setUploading(false);
+      return;
+    }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("product-images")
-      .getPublicUrl(filePath);
-
-    const imageUrl = publicUrlData?.publicUrl;
-
-    const { error: insertError } = await supabase.from("products").insert([
+    const { error } = await supabase.from("products").insert([
       {
         name,
         price,
         stock,
+        description,
         image_url: imageUrl,
-        merchant_id: userId,
+        merchant_id: session.user.id,
+        is_active: true,
       },
     ]);
 
-    if (insertError) {
-      alert("Failed to save product.");
+    if (!error) {
+      toast.success("Product added!");
+      navigate("/merchant");
     } else {
-      navigate("/merchant/dashboard");
+      console.error("Insert error:", error);
+      toast.error("Failed to add product.");
     }
+
+    setUploading(false);
   };
 
   return (
-    <div className="p-6 max-w-xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Add New Product</h2>
+    <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded shadow">
+      <h1 className="text-2xl font-bold mb-6 text-green-700">Add New Product</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          className="w-full p-2 border rounded"
-          placeholder="Product Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          type="number"
-          className="w-full p-2 border rounded"
-          placeholder="Price (₹)"
-          value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
-          required
-        />
-        <input
-          type="number"
-          className="w-full p-2 border rounded"
-          placeholder="Stock Quantity"
-          value={stock}
-          onChange={(e) => setStock(Number(e.target.value))}
-          required
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-          className="w-full"
-          required
-        />
+        <div>
+          <label className="block text-sm font-medium">Product Name</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full border px-3 py-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Price (₹)</label>
+          <input
+            type="number"
+            required
+            min={0}
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value))}
+            className="w-full border px-3 py-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Stock Quantity</label>
+          <input
+            type="number"
+            required
+            min={0}
+            max={1000}
+            value={stock}
+            onChange={(e) => setStock(Number(e.target.value))}
+            className="w-full border px-3 py-2 rounded mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full border px-3 py-2 rounded mt-1"
+          ></textarea>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Product Image</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+            className="mt-1"
+          />
+        </div>
+
         <button
           type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          disabled={uploading}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
         >
-          Add Product
+          {uploading ? "Uploading..." : "Add Product"}
         </button>
       </form>
     </div>
   );
-}
+};
+
+export default AddMerchantProduct;
