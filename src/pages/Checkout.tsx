@@ -1,88 +1,82 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useCartStore } from "@/store/cartStore";
-import { supabase } from "@/lib/SupabaseClient";
-import toast from "react-hot-toast";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import CheckoutButton from '@/components/CheckoutButton';
 
-const CheckoutPage = () => {
-  const cart = useCartStore((state) => state.cart);
-  const clearCart = useCartStore((state) => state.clearCart);
-  const [placingOrder, setPlacingOrder] = useState(false);
+export default function Checkout() {
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  useEffect(() => {
+    const fetchOrder = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please login to continue');
+        navigate('/login');
+        return;
+      }
 
-  const handlePlaceOrder = async () => {
-    setPlacingOrder(true);
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('User_id', session.user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Please log in to place an order.");
-      setPlacingOrder(false);
-      return;
-    }
+      if (error || !data) {
+        toast.error('No pending order found.');
+        navigate('/');
+        return;
+      }
 
-    const { error } = await supabase.from("orders").insert([
-      {
-        user_id: session.user.id,
-        total,
-        items: cart,
-      },
-    ]);
+      setOrder(data);
+      setLoading(false);
+    };
 
-    if (error) {
-      toast.error("Failed to place order.");
-      console.error(error);
-    } else {
-      toast.success("Order placed successfully!");
-      clearCart();
-      navigate("/checkout-success");
-    }
+    fetchOrder();
+  }, [navigate]);
 
-    setPlacingOrder(false);
-  };
+  if (loading) return <div className="p-6 text-center">Loading checkout...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6 text-green-700">Checkout</h1>
+    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-900 shadow rounded">
+      <h1 className="text-2xl font-bold mb-4">Checkout</h1>
 
-      {cart.length === 0 ? (
-        <p>Your cart is empty.</p>
-      ) : (
-        <div className="space-y-4">
-          {cart.map((item) => (
-            <div
-              key={item.id}
-              className="flex justify-between items-center bg-white shadow rounded px-4 py-2"
-            >
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-gray-600">
-                  ₹{item.price} × {item.quantity}
-                </p>
-              </div>
-              <p className="font-semibold">
-                ₹{item.price * item.quantity}
-              </p>
-            </div>
-          ))}
-
-          <div className="flex justify-between font-bold text-lg mt-6">
-            <span>Total:</span>
-            <span>₹{total}</span>
+      <div className="space-y-2 mb-4">
+        <div><strong>Order ID:</strong> {order.id}</div>
+        <div><strong>Total Amount:</strong> ₹{order.total?.toFixed(2)}</div>
+        <div>
+          <strong>Delivery Address:</strong>
+          <div className="border p-2 rounded bg-gray-100 dark:bg-gray-800 mt-1">
+            {order.address || 'No address provided'}
           </div>
+        </div>
+      </div>
 
-          <button
-            onClick={handlePlaceOrder}
-            disabled={placingOrder}
-            className="bg-green-600 text-white w-full py-2 rounded hover:bg-green-700 mt-4"
-          >
-            {placingOrder ? "Placing Order..." : "Place Order"}
-          </button>
+      {Array.isArray(order.items) && order.items.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">Items in Your Order</h2>
+          <ul className="space-y-2">
+            {order.items.map((item: any, i: number) => (
+              <li
+                key={i}
+                className="flex justify-between border p-2 rounded bg-gray-50 dark:bg-gray-800"
+              >
+                <span>{item.name} × {item.quantity}</span>
+                <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+
+      <div className="mt-6 text-center">
+        <CheckoutButton amount={order.total} orderId={order.id} />
+      </div>
     </div>
   );
-};
-
-export default CheckoutPage;
+}

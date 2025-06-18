@@ -1,0 +1,1 @@
+<your full WishlistPage.tsx content here>

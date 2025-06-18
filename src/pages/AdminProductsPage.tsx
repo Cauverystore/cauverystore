@@ -1,0 +1,1 @@
+<your full AdminProductsPage.tsx content here>

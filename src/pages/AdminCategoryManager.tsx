@@ -1,0 +1,1 @@
+<your full AdminCategoryManager.tsx content here>

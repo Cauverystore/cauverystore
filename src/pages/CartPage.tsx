@@ -1,79 +1,97 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCartStore } from '@/store/useCartStore';
+import { Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const CartPage = () => {
-  const [cartItems, setCartItems] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
+export default function CartPage() {
+  const {
+    cart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getTotalItems,
+    getTotalPrice,
+  } = useCartStore();
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedCart = localStorage.getItem("cart");
-    const parsed = storedCart ? JSON.parse(storedCart) : [];
-    setCartItems(parsed);
-  }, []);
-
-  useEffect(() => {
-    const sum = cartItems.reduce(
-      (acc, item) => acc + item.price * item.quantity,
-      0
-    );
-    setTotal(sum);
-  }, [cartItems]);
-
-  const handleRemove = (id: string) => {
-    const updated = cartItems.filter((item) => item.id !== id);
-    setCartItems(updated);
-    localStorage.setItem("cart", JSON.stringify(updated));
-  };
-
-  const handleCheckout = () => {
-    navigate("/checkout");
-  };
-
-  if (cartItems.length === 0) {
-    return (
-      <div className="text-center mt-16">
-        <h2 className="text-2xl font-semibold text-gray-700">Your cart is empty</h2>
-        <Link to="/storefront" className="text-green-600 hover:underline mt-4 inline-block">
-          Browse Products
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto mt-10 px-4">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">Your Cart</h1>
-      <div className="space-y-4">
-        {cartItems.map((item) => (
-          <div key={item.id} className="flex justify-between items-center bg-white p-4 shadow rounded">
+    <div className="p-4 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Your Cart</h1>
+
+      {cart.length === 0 ? (
+        <p className="text-gray-600">Your cart is empty.</p>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 border p-4 rounded-lg shadow-sm bg-white dark:bg-gray-800"
+              >
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-20 h-20 object-cover rounded"
+                />
+                <div className="flex-1">
+                  <h2 className="text-lg font-semibold">{item.name}</h2>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    ₹{item.price.toFixed(2)} × {item.quantity} = ₹
+                    {(item.price * item.quantity).toFixed(2)}
+                  </p>
+                  <div className="flex items-center mt-2 gap-2">
+                    <label className="text-sm">Qty:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateQuantity(item.id, parseInt(e.target.value, 10) || 1)
+                      }
+                      className="w-16 p-1 border rounded text-center"
+                    />
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="ml-2 text-red-500 hover:text-red-700"
+                      title="Remove from cart"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="mt-6 flex justify-between items-center border-t pt-4">
             <div>
-              <h2 className="font-semibold">{item.name}</h2>
-              <p className="text-sm text-gray-600">
-                ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
+              <p className="text-lg">
+                Total Items: <span className="font-bold">{getTotalItems()}</span>
+              </p>
+              <p className="text-lg">
+                Total Price: ₹
+                <span className="font-bold">{getTotalPrice().toFixed(2)}</span>
               </p>
             </div>
-            <button
-              onClick={() => handleRemove(item.id)}
-              className="text-red-600 hover:underline text-sm"
-            >
-              Remove
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={clearCart}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              >
+                Clear Cart
+              </button>
+              <button
+                onClick={() => navigate('/checkout')}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Checkout
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
-
-      <div className="mt-6 text-right">
-        <p className="text-xl font-semibold">Total: ₹{total}</p>
-        <button
-          onClick={handleCheckout}
-          className="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-        >
-          Proceed to Checkout
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
-};
-
-export default CartPage;
+}

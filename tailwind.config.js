@@ -1,17 +1,23 @@
-// tailwind.config.js
-export default {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: 'class',
   content: [
-    "./index.html",           // 👈 Root index.html
-    "./src/**/*.{js,ts,jsx,tsx}", // 👈 All React files
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
       colors: {
-        primary: "#1e7f38",
-        primaryDark: "#176430",
-        secondary: "#28a745",
+        primary: {
+          DEFAULT: '#2E7D32',   // Dark Green (e.g., buttons, headers)
+          light: '#A5D6A7',     // Light Green (e.g., backgrounds, accents)
+        },
+        accent: '#66BB6A',       // Optional vibrant accent green
       },
     },
   },
+  plugins: [
+  require('@tailwindcss/typography'),
+],
   plugins: [],
 };

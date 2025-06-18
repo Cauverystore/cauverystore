@@ -1,112 +1,75 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from './supabaseClient';
-import ProtectedRoute from './components/ProtectedRoute';
-import Navbar from './components/Navbar';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // Pages
-import HomePage from "./pages/Home";
-import LoginPage from './pages/LoginPage';
-import SignupPage from "./pages/Signup";
-import ProfilePage from './pages/ProfilePage';
-import ProductsPage from './pages/ProductsPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import MerchantDashboard from './pages/merchant/MerchantDashboard';
-import NotFoundPage from './pages/NotFoundPage';
+import HomePage from "@/pages/HomePage";
+import StorefrontPage from "@/pages/StorefrontPage";
+import ProductDetailPage from "@/pages/ProductDetailPage";
+import CartPage from "@/pages/CartPage";
+import CheckoutPage from "@/pages/CheckoutPage";
+import WishlistPage from "@/pages/WishlistPage";
+import ProfilePage from "@/pages/ProfilePage";
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
+import CustomerOrdersPage from "@/pages/CustomerOrdersPage";
+
+// Admin Pages
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
+import AdminOrderTrackingPage from "@/pages/AdminOrderTrackingPage";
+import AdminReturnRequestsPage from "@/pages/AdminReturnRequestsPage";
+import AdminLogsPage from "@/pages/AdminLogsPage";
+import SupportRequestsPage from "@/pages/SupportRequestsPage";
+import AdminUsersPage from "@/pages/AdminUsersPage";
+
+// Merchant Pages
+import MerchantDashboardPage from "@/pages/MerchantDashboardPage";
+import AddOrEditProductPage from "@/pages/AddOrEditProductPage";
+import MerchantOrdersPage from "@/pages/MerchantOrdersPage";
+
+// Other Pages
+import SearchResultsPage from "@/pages/SearchResultsPage";
+import TermsAndConditionsPage from "@/pages/TermsAndConditionsPage";
+import HelpCenterPage from "@/pages/HelpCenterPage";
+import NotFoundPage from "@/pages/404";
+
+// Analytics
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Reusable role fetcher
-  const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching user role:', error.message);
-    } else {
-      setRole(data?.role || null);
-    }
-  };
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        await fetchUserRole(currentUser.id);
-      }
-
-      setLoading(false);
-    };
-
-    getSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const authUser = session?.user || null;
-      setUser(authUser);
-
-      if (authUser) {
-        fetchUserRole(authUser.id);
-      } else {
-        setRole(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-100">
-        <span className="text-gray-700 text-lg">Loading...</span>
-      </div>
-    );
-  }
-
   return (
     <Router>
-      <Navbar user={user} role={role} />
-      <div className="min-h-screen p-4 bg-gray-50 text-gray-800">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
-          <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/" />} />
-          <Route path="/profile" element={
-            <ProtectedRoute user={user}>
-              <ProfilePage />
-            </ProtectedRoute>
-          } />
-          <Route path="/products" element={<ProductsPage />} />
+      <AnalyticsTracker />
+      <Routes>
+        {/* Customer Pages */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/store" element={<StorefrontPage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/wishlist" element={<WishlistPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/orders" element={<CustomerOrdersPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
 
-          {/* Admin Route */}
-          <Route path="/admin" element={
-            <ProtectedRoute user={user} role={role} allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+        {/* Admin Pages */}
+        <Route path="/admin" element={<AdminDashboardPage />} />
+        <Route path="/admin/track-orders" element={<AdminOrderTrackingPage />} />
+        <Route path="/admin/return-requests" element={<AdminReturnRequestsPage />} />
+        <Route path="/admin/logs" element={<AdminLogsPage />} />
+        <Route path="/admin/support" element={<SupportRequestsPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
 
-          {/* Merchant Route */}
-          <Route path="/merchant" element={
-            <ProtectedRoute user={user} role={role} allowedRoles={['merchant']}>
-              <MerchantDashboard />
-            </ProtectedRoute>
-          } />
+        {/* Merchant Pages */}
+        <Route path="/merchant" element={<MerchantDashboardPage />} />
+        <Route path="/merchant/products" element={<AddOrEditProductPage />} />
+        <Route path="/merchant/orders" element={<MerchantOrdersPage />} />
 
-          {/* 404 Fallback */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </div>
+        {/* Other Pages */}
+        <Route path="/search" element={<SearchResultsPage />} />
+        <Route path="/terms" element={<TermsAndConditionsPage />} />
+        <Route path="/help" element={<HelpCenterPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
     </Router>
   );
 }
