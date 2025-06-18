@@ -85,5 +85,6 @@ export default function AdminReturnRequestsPage() {
               </label>
               <textarea
                 defaultValue={req.response_comment || ""}
-                onBlur={(e) =>
-                  updateStatus(req.id, req.status, e.target.value)
+             onBlur={(e) => {
+  updateStatus(req.id, req.status, e.target.value);
+}}
