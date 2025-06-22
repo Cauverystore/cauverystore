@@ -1,10 +1,16 @@
-// MyOrdersPage.tsx - Full Order System + Review + Support Integration
+// MyOrdersPage.tsx – Enhanced with UI Components & Return/Review Flow
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import InvoiceGenerator from '@/components/InvoiceGenerator';
 import { useCartStore } from '@/stores/useCartStore';
+
+import Spinner from '@/components/ui/Spinner';
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import Textarea from '@/components/ui/Textarea';
+import EmptyState from '@/components/ui/EmptyState';
+import InvoiceGenerator from '@/components/InvoiceGenerator';
 
 export default function MyOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -108,37 +114,53 @@ export default function MyOrdersPage() {
   };
 
   const contactSupport = (orderId: string) => {
-    toast.success('Redirecting to support contact form...');
     navigate(`/support?order_id=${orderId}`);
   };
 
-  if (loading) return <div className="p-6 text-center">Loading your orders...</div>;
+  if (loading) {
+    return (
+      <div className="p-6 text-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">My Orders</h1>
+      <PageHeader
+        title="My Orders"
+        subtitle="Track, manage, and review your orders"
+      />
+
       {orders.length === 0 ? (
-        <p className="text-gray-600">No orders placed yet.</p>
+        <EmptyState
+          title="No Orders Yet"
+          description="Start shopping and place your first order!"
+          actionLabel="Go to Store"
+          onAction={() => navigate('/')}
+        />
       ) : (
         <ul className="space-y-6">
           {orders.map((order) => (
             <li key={order.id} className="border rounded p-4 shadow-sm">
-              <div className="mb-2">
-                <strong>Order ID:</strong> {order.id} <br />
-                <strong>Status:</strong> {order.status} <br />
-                <strong>Total:</strong> ₹{order.total} <br />
-                <strong>Date:</strong> {new Date(order.created_at).toLocaleString()}
+              <div className="mb-2 space-y-1 text-sm">
+                <p><strong>Order ID:</strong> {order.id}</p>
+                <p><strong>Status:</strong> {order.status}</p>
+                <p><strong>Total:</strong> ₹{order.total}</p>
+                <p><strong>Date:</strong> {new Date(order.created_at).toLocaleString()}</p>
               </div>
+
               <InvoiceGenerator order={order} />
+
               <div className="mt-4">
-                <h4 className="font-semibold">Items:</h4>
+                <h4 className="font-semibold mb-2">Items:</h4>
                 {order.order_items?.map((item: any, idx: number) => (
-                  <div key={idx} className="flex justify-between items-center mb-2">
+                  <div key={idx} className="flex justify-between items-center mb-2 text-sm">
                     <span>{item.name} × {item.quantity}</span>
                     <span>₹{item.price * item.quantity}</span>
                     {order.status === 'delivered' && (
                       <button
-                        className="text-sm text-purple-600 underline ml-2"
+                        className="text-xs text-purple-600 underline ml-2"
                         onClick={() => setReviewingProductId(item.product_id)}
                       >
                         ✍️ Review
@@ -147,17 +169,17 @@ export default function MyOrdersPage() {
                   </div>
                 ))}
               </div>
+
               {reviewingProductId && (
                 <div className="mt-4 border rounded p-4 bg-gray-50">
                   <h4 className="font-semibold mb-2">Leave a Review</h4>
-                  <textarea
-                    className="w-full border p-2 rounded mb-2"
-                    placeholder="Your thoughts..."
+                  <Textarea
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
+                    placeholder="Your thoughts..."
                   />
                   <select
-                    className="w-full border p-2 rounded mb-2"
+                    className="w-full border p-2 rounded mt-2"
                     value={reviewRating}
                     onChange={(e) => setReviewRating(Number(e.target.value))}
                   >
@@ -165,82 +187,90 @@ export default function MyOrdersPage() {
                       <option key={r} value={r}>{r} Star{r > 1 && 's'}</option>
                     ))}
                   </select>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => submitReview(reviewingProductId)}
-                      className="bg-purple-600 text-white px-4 py-1 rounded"
-                    >
-                      Submit
-                    </button>
-                    <button
-                      onClick={() => setReviewingProductId(null)}
-                      className="text-gray-600"
-                    >
+                  <div className="flex gap-2 mt-2">
+                    <Button onClick={() => submitReview(reviewingProductId!)}>Submit</Button>
+                    <Button variant="ghost" onClick={() => setReviewingProductId(null)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
+
               <div className="mt-4 flex gap-3 flex-wrap">
-                <button
-                  onClick={() => addToCart({ id: order.id, name: 'Reorder', price: order.total, quantity: 1 })}
-                  className="bg-green-600 text-white px-4 py-2 rounded"
+                <Button
+                  onClick={() =>
+                    addToCart({ id: order.id, name: 'Reorder', price: order.total, quantity: 1 })
+                  }
+                  className="bg-green-600 text-white"
                 >
                   Reorder
-                </button>
-                <button
+                </Button>
+
+                <Button
                   onClick={() => contactSupport(order.id)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                  className="bg-blue-600 text-white"
                 >
                   Contact Support
-                </button>
+                </Button>
+
                 {order.status === 'pending' && (
-                  <button
+                  <Button
                     onClick={() => handleCancelOrder(order.id)}
-                    className="bg-red-600 text-white px-4 py-2 rounded"
+                    className="bg-red-600 text-white"
                   >
                     Cancel Order
-                  </button>
+                  </Button>
                 )}
+
                 {order.status === 'delivered' && (
-                  <button
+                  <Button
                     onClick={() => setShowReturnForm(order.id)}
-                    className="bg-yellow-600 text-white px-4 py-2 rounded"
+                    className="bg-yellow-600 text-white"
                   >
                     Request Return/Replace
-                  </button>
+                  </Button>
                 )}
               </div>
+
               {showReturnForm === order.id && (
                 <div className="mt-4 p-4 border rounded bg-gray-100">
                   <h3 className="text-lg font-semibold mb-2">Submit Return/Replace Request</h3>
-                  <div className="mb-2">
-                    <label className="mr-4">
-                      <input type="radio" value="return" checked={returnType === 'return'} onChange={() => setReturnType('return')} /> Return
+                  <div className="mb-2 text-sm space-x-4">
+                    <label>
+                      <input
+                        type="radio"
+                        value="return"
+                        checked={returnType === 'return'}
+                        onChange={() => setReturnType('return')}
+                        className="mr-1"
+                      />
+                      Return
                     </label>
                     <label>
-                      <input type="radio" value="replace" checked={returnType === 'replace'} onChange={() => setReturnType('replace')} /> Replace
+                      <input
+                        type="radio"
+                        value="replace"
+                        checked={returnType === 'replace'}
+                        onChange={() => setReturnType('replace')}
+                        className="mr-1"
+                      />
+                      Replace
                     </label>
                   </div>
-                  <textarea
+
+                  <Textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Enter reason..."
-                    className="w-full p-2 border rounded"
                   />
+
                   <div className="mt-2 flex gap-2">
-                    <button
-                      onClick={() => submitReturnRequest(order.id)}
-                      className="bg-purple-600 text-white px-4 py-2 rounded"
-                    >
+                    <Button onClick={() => submitReturnRequest(order.id)}>
                       Submit Request
-                    </button>
-                    <button
-                      onClick={() => setShowReturnForm(null)}
-                      className="text-gray-600 hover:text-gray-800"
-                    >
+                    </Button>
+                    <Button variant="ghost" onClick={() => setShowReturnForm(null)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

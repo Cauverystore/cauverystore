@@ -1,91 +1,84 @@
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
+// src/pages/ReportReviewPage.tsx
 
-export default function ReportedReviewsPage() {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [replyMap, setReplyMap] = useState<Record<string, string>>({});
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
+
+export default function ReportReviewPage() {
+  const { reviewId } = useParams();
+  const navigate = useNavigate();
+  const [reason, setReason] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [hasReported, setHasReported] = useState(false);
 
   useEffect(() => {
-    fetchReportedReviews();
+    getUser();
   }, []);
 
-  const fetchReportedReviews = async () => {
-    const { data, error } = await supabase
-      .from("review_reports")
-      .select("*, review:review_id(*, product:product_id(name))")
-      .order("created_at", { ascending: false });
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      setUserId(user.id);
+      checkExistingReport(user.id);
+    }
+  };
+
+  const checkExistingReport = async (uid: string) => {
+    const { data } = await supabase
+      .from('review_reports')
+      .select('id')
+      .eq('user_id', uid)
+      .eq('review_id', reviewId);
+    if (data && data.length > 0) {
+      setHasReported(true);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) return toast.error('Please enter a reason');
+    if (!userId || hasReported) return;
+
+    const { error } = await supabase.from('review_reports').insert({
+      user_id: userId,
+      review_id: reviewId,
+      reason,
+    });
 
     if (error) {
-      toast.error("Failed to load reports");
-      setLoading(false);
-      return;
-    }
-
-    const enriched = data.map((r: any) => ({
-      ...r.review,
-      report_reason: r.reason,
-      report_id: r.id,
-    }));
-
-    setReviews(enriched);
-    setLoading(false);
-  };
-
-  const handleReply = async (reviewId: string) => {
-    const reply = replyMap[reviewId];
-    if (!reply.trim()) return toast.error("Reply cannot be empty");
-
-    const { error } = await supabase
-      .from("product_reviews")
-      .update({ admin_reply: reply })
-      .eq("id", reviewId);
-
-    if (!error) {
-      toast.success("Reply saved");
-      setReplyMap((prev) => ({ ...prev, [reviewId]: "" }));
-      fetchReportedReviews();
+      toast.error('Failed to report review');
     } else {
-      toast.error("Failed to save reply");
+      toast.success('Review reported successfully');
+      setHasReported(true);
+      setTimeout(() => navigate(-1), 1500);
     }
   };
-
-  if (loading) return <div className="p-4">Loading reported reviews...</div>;
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold text-red-700 mb-6">Reported Reviews</h2>
-      {reviews.length === 0 ? (
-        <p>No reported reviews found.</p>
+    <div className="max-w-xl mx-auto p-6 bg-white dark:bg-gray-900 text-gray-800 dark:text-white rounded shadow">
+      <h1 className="text-2xl font-bold mb-4 text-red-600">Report Review</h1>
+
+      {hasReported ? (
+        <p className="text-green-600">You have already reported this review.</p>
       ) : (
-        <div className="space-y-6">
-          {reviews.map((review) => (
-            <div key={review.id} className="border p-4 bg-white rounded shadow-sm space-y-2">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Product:</span> {review.product?.name || "Unknown"}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">User Review:</span> {review.content}
-              </p>
-              <p className="text-sm text-red-600">
-                <span className="font-medium">Reported Reason:</span> {review.report_reason}
-              </p>
-              <textarea
-                value={replyMap[review.id] || ""}
-                onChange={(e) => setReplyMap((prev) => ({ ...prev, [review.id]: e.target.value }))}
-                placeholder="Write admin reply..."
-                className="w-full border px-3 py-2 rounded text-sm"
-              />
-              <button
-                onClick={() => handleReply(review.id)}
-                className="bg-green-600 text-white px-4 py-1 text-sm rounded hover:bg-green-700"
-              >
-                Submit Reply
-              </button>
-            </div>
-          ))}
-        </div>
+        <>
+          <label className="block mb-2 text-sm font-semibold">Reason for Reporting</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="w-full border px-3 py-2 rounded mb-4"
+            rows={5}
+            placeholder="Explain why you're reporting this review..."
+          />
+          <button
+            onClick={handleSubmit}
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Submit Report
+          </button>
+        </>
       )}
     </div>
   );

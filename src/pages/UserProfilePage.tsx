@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/SupabaseClient";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
 
-const UserProfilePage = () => {
+import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+
+export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.user) {
+        toast.error("Please log in to view profile.");
         navigate("/login");
         return;
       }
@@ -28,7 +33,7 @@ const UserProfilePage = () => {
 
       if (error) {
         console.error("Error loading profile:", error);
-        setError("Failed to load profile.");
+        toast.error("Failed to load profile.");
       } else {
         setProfile(data);
         setName(data.name || "");
@@ -51,53 +56,50 @@ const UserProfilePage = () => {
 
     if (error) {
       console.error("Error saving profile:", error);
-      setError("Failed to save changes.");
+      toast.error("Failed to save changes.");
+    } else {
+      toast.success("Profile updated successfully.");
     }
 
     setSaving(false);
   };
 
   if (loading) {
-    return <div className="text-center py-10">Loading profile...</div>;
+    return <LoadingSpinner className="mt-10" />;
   }
 
   return (
-    <div className="max-w-lg mx-auto mt-10 bg-white p-6 shadow rounded">
-      <h1 className="text-2xl font-bold mb-6 text-green-700">Your Profile</h1>
+    <div className="max-w-xl mx-auto p-6">
+      <PageHeader title="👤 Your Profile" />
 
-      {error && <div className="text-red-600 text-sm mb-4">{error}</div>}
-
-      <div className="space-y-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow space-y-6">
         <div>
-          <label className="block text-sm font-medium">Email</label>
-          <p className="text-gray-700">{profile.email}</p>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+          <p className="mt-1 text-gray-900 dark:text-white">{profile?.email || "N/A"}</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Role</label>
-          <p className="text-gray-700">{profile.role}</p>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
+          <p className="mt-1 text-gray-900 dark:text-white capitalize">{profile?.role || "N/A"}</p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Name</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
           <input
             type="text"
             value={name}
-            className="mt-1 w-full border rounded px-3 py-2"
             onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Enter your name"
           />
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
+        <div className="text-right">
+          <Button onClick={handleSave} loading={saving}>
+            Save Changes
+          </Button>
+        </div>
       </div>
     </div>
   );
-};
-
-export default UserProfilePage;
+}

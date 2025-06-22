@@ -1,7 +1,12 @@
+// src/pages/StorefrontPage.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import ProductCard from '@/components/ProductCard';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorAlert from '@/components/ui/ErrorAlert';
 import { useDebounce } from '@/hooks/useDebounce';
 import { highlightMatch } from '@/utils/highlightMatch';
 
@@ -16,6 +21,8 @@ export default function StorefrontPage() {
   const [selectedTag, setSelectedTag] = useState('');
   const [showCategories, setShowCategories] = useState(false);
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const pageSize = 6;
 
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
@@ -25,6 +32,8 @@ export default function StorefrontPage() {
   }, [sortBy, debouncedSearchTerm, selectedCategory, selectedTag, page]);
 
   const fetchProducts = async () => {
+    setLoading(true);
+    setError('');
     try {
       let query = supabase
         .from('products')
@@ -42,7 +51,7 @@ export default function StorefrontPage() {
 
       const { data, error } = await query;
       if (error) {
-        console.error('Error fetching products:', error);
+        setError(error.message);
         return;
       }
 
@@ -66,8 +75,11 @@ export default function StorefrontPage() {
       }
 
       setProducts(filtered);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unexpected error:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,6 +88,8 @@ export default function StorefrontPage() {
 
   return (
     <div className="p-4">
+      <PageHeader title="Welcome to Cauvery Store" subtitle="Browse authentic herbal and natural products" />
+
       {/* Controls */}
       <div className="flex flex-wrap gap-2 mb-4 relative z-10">
         {/* Search Input */}
@@ -87,7 +101,7 @@ export default function StorefrontPage() {
           className="border p-2 rounded w-48"
         />
 
-        {/* Category Dropdown with Highlighting */}
+        {/* Category Dropdown */}
         <div className="relative">
           <div
             className="border p-2 rounded bg-white cursor-pointer w-48"
@@ -144,25 +158,39 @@ export default function StorefrontPage() {
         ))}
       </div>
 
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {products.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            searchTerm={debouncedSearchTerm}
-          />
-        ))}
-      </div>
+      {/* Error State */}
+      {error && <ErrorAlert message={error} />}
 
-      {/* Pagination */}
-      <div className="flex justify-center items-center gap-4 mt-6">
-        <Button onClick={handlePrevPage} disabled={page === 1}>
-          Previous
-        </Button>
-        <span>Page {page}</span>
-        <Button onClick={handleNextPage}>Next</Button>
-      </div>
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : products.length === 0 ? (
+        <EmptyState message="No products found matching your filters." />
+      ) : (
+        <>
+          {/* Product Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                searchTerm={debouncedSearchTerm}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-center items-center gap-4 mt-6">
+            <Button onClick={handlePrevPage} disabled={page === 1}>
+              Previous
+            </Button>
+            <span>Page {page}</span>
+            <Button onClick={handleNextPage}>Next</Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

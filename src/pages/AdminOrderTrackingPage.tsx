@@ -1,82 +1,91 @@
-// --- AdminOrderTrackingPage.tsx ---
-
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { Helmet } from "react-helmet-async";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet-async';
 
 interface Order {
-  id: number;
-  product_name?: string;
-  tracking_id?: string;
-  courier_service?: string;
-  estimated_delivery_date?: string;
-  tracking_status?: string;
+  id: string;
+  user_email: string;
+  status: string;
+  tracking_info: string;
+  created_at: string;
 }
 
 export default function AdminOrderTrackingPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
   const fetchOrders = async () => {
-    const { data, error } = await supabase.from("orders").select("*");
-    if (!error && data) setOrders(data);
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) toast.error('Failed to fetch orders');
+    else setOrders(data || []);
+    setLoading(false);
   };
 
-  const updateTracking = async (id: number, field: string, value: string) => {
-    const { error } = await supabase.from("orders").update({ [field]: value }).eq("id", id);
-    if (!error) fetchOrders();
+  const updateTracking = async (id: string, info: string) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ tracking_info: info })
+      .eq('id', id);
+
+    if (!error) {
+      toast.success('Tracking updated');
+      fetchOrders();
+    } else {
+      toast.error('Update failed');
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="p-6 max-w-6xl mx-auto">
       <Helmet>
-        <title>Track Orders | Admin | Cauverystore</title>
-        <meta
-          name="description"
-          content="Admin tracking and delivery updates for Cauverystore orders."
-        />
+        <title>Admin Order Tracking</title>
       </Helmet>
-      <h1 className="text-2xl font-bold mb-6">Admin Order Tracking</h1>
-      {orders.map((order) => (
-        <div key={order.id} className="border p-4 mb-4 bg-white rounded-lg">
-          <p className="font-semibold">Order ID: {order.id}</p>
-          {order.product_name && (
-            <p className="text-sm text-gray-600 mb-1">Product: {order.product_name}</p>
-          )}
-          <input
-            className="border px-2 py-1 w-full my-1"
-            defaultValue={order.tracking_id || ""}
-            onBlur={(e) => updateTracking(order.id, "tracking_id", e.target.value)}
-            placeholder="Tracking ID"
-          />
-          <input
-            className="border px-2 py-1 w-full my-1"
-            defaultValue={order.courier_service || ""}
-            onBlur={(e) => updateTracking(order.id, "courier_service", e.target.value)}
-            placeholder="Courier Service"
-          />
-          <input
-            className="border px-2 py-1 w-full my-1"
-            defaultValue={order.estimated_delivery_date || ""}
-            onBlur={(e) => updateTracking(order.id, "estimated_delivery_date", e.target.value)}
-            placeholder="Estimated Delivery Date"
-          />
-          <select
-            className="border px-2 py-1 w-full my-1"
-            value={order.tracking_status || "pending"}
-            onChange={(e) => updateTracking(order.id, "tracking_status", e.target.value)}
-          >
-            <option value="pending">Pending</option>
-            <option value="shipped">Shipped</option>
-            <option value="out_for_delivery">Out for Delivery</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+      <h1 className="text-2xl font-bold mb-4 text-green-700">Order Tracking</h1>
+
+      {loading ? (
+        <p>Loading orders...</p>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => (
+            <div
+              key={order.id}
+              className="p-4 border rounded bg-white dark:bg-gray-800 flex justify-between items-center"
+            >
+              <div>
+                <p className="text-sm font-semibold text-green-700">Order ID: {order.id}</p>
+                <p className="text-sm text-gray-600">User: {order.user_email}</p>
+                <p className="text-sm text-gray-600">Status: {order.status}</p>
+                <p className="text-xs text-gray-400">
+                  Placed: {new Date(order.created_at).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-700 mt-2">
+                  Tracking Info:{" "}
+                  <span className="font-mono text-blue-700">{order.tracking_info || 'N/A'}</span>
+                </p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <input
+                  type="text"
+                  placeholder="Update tracking info"
+                  defaultValue={order.tracking_info || ''}
+                  onBlur={(e) => updateTracking(order.id, e.target.value)}
+                  className="border px-3 py-1 rounded text-sm"
+                />
+              </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

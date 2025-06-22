@@ -2,25 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global HTML/Body setup */
+/* Global HTML Setup */
 html {
   scroll-behavior: smooth;
 }
 
+/* Body Styling */
 body {
-  @apply bg-white text-gray-800 dark:bg-gray-900 dark:text-white transition-colors duration-300;
+  @apply font-sans bg-white text-gray-800 dark:bg-gray-900 dark:text-white transition-colors duration-300;
 }
 
-/* Optional: Add transitions for nav or UI elements */
-nav, button, a, input, select {
+/* Universal UI Transitions */
+nav, button, a, input, select, textarea {
   @apply transition-colors duration-300;
 }
 
-/* Optional: Styling for focus/hover on inputs (both modes) */
+/* Prevent accidental selection */
+button, a {
+  user-select: none;
+}
+
+/* Form Inputs Styling */
 input, select, textarea {
   @apply border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-black dark:text-white rounded px-3 py-2 outline-none;
 }
 
 input:focus, select:focus, textarea:focus {
   @apply ring-2 ring-green-500 dark:ring-green-300;
+}
+
+/* Heading Styles */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-semibold text-gray-900 dark:text-white;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #a0aec0;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #4a5568;
 }

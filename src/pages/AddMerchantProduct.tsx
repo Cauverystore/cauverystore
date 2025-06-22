@@ -1,146 +1,103 @@
-import { useState } from "react";
-import { supabase } from "@/lib/SupabaseClient";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+// ✅ src/pages/AddMerchantProduct.tsx
 
-const AddMerchantProduct = () => {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState<number>(0);
-  const [stock, setStock] = useState<number>(0);
-  const [description, setDescription] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+import { useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet-async';
+
+export default function AddMerchantProduct() {
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [originalPrice, setOriginalPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [category, setCategory] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const navigate = useNavigate();
-
-  const handleImageUpload = async () => {
-    if (!image) return null;
-    const fileExt = image.name.split(".").pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage
-      .from("product-images")
-      .upload(fileName, image);
-
-    if (error) {
-      toast.error("Image upload failed.");
-      return null;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("product-images").getPublicUrl(fileName);
-
-    return publicUrl;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUploading(true);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Session expired. Please login again.");
-      navigate("/login");
+    if (!name || !price || !stock || !category || !imageUrl) {
+      toast.error('Please fill in all required fields.');
       return;
     }
 
-    const imageUrl = await handleImageUpload();
-    if (!imageUrl) {
-      setUploading(false);
-      return;
-    }
-
-    const { error } = await supabase.from("products").insert([
+    const { error } = await supabase.from('products').insert([
       {
         name,
-        price,
-        stock,
-        description,
+        price: parseFloat(price),
+        original_price: originalPrice ? parseFloat(originalPrice) : null,
+        stock: parseInt(stock),
+        category,
         image_url: imageUrl,
-        merchant_id: session.user.id,
-        is_active: true,
+        status: 'active',
       },
     ]);
 
-    if (!error) {
-      toast.success("Product added!");
-      navigate("/merchant");
+    if (error) {
+      toast.error('Failed to add product.');
     } else {
-      console.error("Insert error:", error);
-      toast.error("Failed to add product.");
+      toast.success('Product added successfully.');
+      navigate('/merchant/dashboard');
     }
-
-    setUploading(false);
   };
 
   return (
-    <div className="max-w-xl mx-auto mt-10 p-6 bg-white rounded shadow">
-      <h1 className="text-2xl font-bold mb-6 text-green-700">Add New Product</h1>
+    <div className="max-w-2xl mx-auto p-6">
+      <Helmet>
+        <title>Add Product | Merchant</title>
+      </Helmet>
+      <h1 className="text-2xl font-bold mb-4 text-green-700">Add New Product</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Product Name</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full border px-3 py-2 rounded mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Price (₹)</label>
-          <input
-            type="number"
-            required
-            min={0}
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
-            className="w-full border px-3 py-2 rounded mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Stock Quantity</label>
-          <input
-            type="number"
-            required
-            min={0}
-            max={1000}
-            value={stock}
-            onChange={(e) => setStock(Number(e.target.value))}
-            className="w-full border px-3 py-2 rounded mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Description</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full border px-3 py-2 rounded mt-1"
-          ></textarea>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Product Image</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImage(e.target.files?.[0] || null)}
-            className="mt-1"
-          />
-        </div>
-
+        <input
+          type="text"
+          placeholder="Product Name"
+          className="border rounded px-4 py-2 w-full"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Price"
+          className="border rounded px-4 py-2 w-full"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Original Price (optional)"
+          className="border rounded px-4 py-2 w-full"
+          value={originalPrice}
+          onChange={(e) => setOriginalPrice(e.target.value)}
+        />
+        <input
+          type="number"
+          placeholder="Stock"
+          className="border rounded px-4 py-2 w-full"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Category"
+          className="border rounded px-4 py-2 w-full"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Image URL"
+          className="border rounded px-4 py-2 w-full"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+        />
         <button
           type="submit"
-          disabled={uploading}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          {uploading ? "Uploading..." : "Add Product"}
+          Add Product
         </button>
       </form>
     </div>
   );
-};
-
-export default AddMerchantProduct;
+}

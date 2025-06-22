@@ -1,14 +1,23 @@
-
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
+// src/main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
 import './index.css';
-import { BrowserRouter } from "react-router-dom";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+import ErrorBoundary from './components/ErrorBoundary';
+import ToasterProvider from './components/ToasterProvider';
+import { LoadingProvider } from './context/LoadingContext';
+import { DarkModeProvider } from './store/darkModeStore';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <DarkModeProvider>
+        <LoadingProvider>
+          <ToasterProvider />
+          <App />
+        </LoadingProvider>
+      </DarkModeProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

@@ -1,100 +1,55 @@
+// src/pages/LoginPage.tsx
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (loginError || !authData.session) {
-      setLoading(false);
-      setError(loginError?.message || 'Login failed.');
-      return;
-    }
-
-    const userId = authData.session.user.id;
-
-    // Fetch role from profiles
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
-
-    setLoading(false);
-
-    if (profileError || !profile) {
-      setError('Could not fetch user role.');
-      return;
-    }
-
-    toast.success('Login successful.');
-
-    // Redirect based on role
-    switch (profile.role) {
-      case 'admin':
-        navigate('/admin');
-        break;
-      case 'merchant':
-        navigate('/merchant');
-        break;
-      case 'customer':
-        navigate('/customer-dashboard');
-        break;
-      default:
-        navigate('/');
-        break;
+    if (error) {
+      setError(error.message);
+    } else {
+      navigate('/'); // or redirect to dashboard based on role
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <form
         onSubmit={handleLogin}
-        className="p-6 rounded-xl shadow-lg w-full max-w-sm bg-white space-y-4"
+        className="bg-white p-6 rounded shadow-md w-full max-w-md"
       >
-        <h2 className="text-2xl font-semibold text-center text-green-700">Login to Cauvery Store</h2>
-
+        <h2 className="text-xl font-bold mb-4">Login</h2>
+        {error && <p className="text-red-500 mb-2">{error}</p>}
         <input
           type="email"
           placeholder="Email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
-          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 mb-4 w-full"
           required
         />
-
         <input
           type="password"
           placeholder="Password"
           value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+          onChange={(e) => setPassword(e.target.value)}
+          className="border p-2 mb-4 w-full"
           required
         />
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-md transition duration-200"
+          className="bg-green-600 text-white p-2 rounded w-full"
         >
-          {loading ? 'Logging in...' : 'Login'}
+          Sign In
         </button>
       </form>
     </div>

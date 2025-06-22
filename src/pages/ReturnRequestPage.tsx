@@ -1,117 +1,121 @@
 // src/pages/ReturnRequestPage.tsx
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
 
 export default function ReturnRequestPage() {
   const [orders, setOrders] = useState<any[]>([]);
-  const [selectedOrderId, setSelectedOrderId] = useState("");
-  const [reason, setReason] = useState("");
-  const [type, setType] = useState("return");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    getUser();
+    fetchOrders();
   }, []);
 
-  const getUser = async () => {
+  const fetchOrders = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return navigate("/login");
-    setUserId(user.id);
-    fetchOrders(user.id);
-  };
-
-  const fetchOrders = async (uid: string) => {
-    const { data, error } = await supabase
-      .from("orders")
-      .select("id, status, created_at")
-      .eq("user_id", uid)
-      .eq("status", "delivered")
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setOrders(data);
-    }
-  };
-
-  const submitRequest = async () => {
-    if (!selectedOrderId || !reason.trim()) {
-      toast.error("Select order and enter reason");
+    if (!user) {
+      toast.error('Please log in to request a return');
+      navigate('/login');
       return;
     }
 
-    const { error } = await supabase.from("return_requests").insert({
-      user_id: userId,
-      order_id: selectedOrderId,
-      reason,
-      type,
-    });
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, product_name, created_at')
+      .eq('user_id', user.id)
+      .eq('status', 'delivered');
 
-    if (!error) {
-      toast.success("Request submitted");
-      setReason("");
-      setSelectedOrderId("");
+    if (error) {
+      toast.error('Failed to fetch orders');
     } else {
-      toast.error("Submission failed");
+      setOrders(data || []);
+    }
+
+    setLoading(false);
+  };
+
+  const submitReturnRequest = async () => {
+    if (!selectedOrderId || !reason.trim()) {
+      toast.error('Please select an order and provide a reason');
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from('return_requests').insert([
+      {
+        order_id: selectedOrderId,
+        user_id: user?.id,
+        reason,
+      },
+    ]);
+
+    if (error) {
+      toast.error('Failed to submit request');
+    } else {
+      toast.success('Return request submitted');
+      setReason('');
+      setSelectedOrderId('');
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 min-h-screen">
-      <h1 className="text-2xl font-bold text-green-700 mb-6">Return or Replace Product</h1>
+    <div className="max-w-3xl mx-auto p-6">
+      <Helmet>
+        <title>Return Request | Cauverystore</title>
+      </Helmet>
+      <h1 className="text-2xl font-bold mb-4 text-green-700">Request a Return</h1>
 
-      <div className="space-y-4 bg-white dark:bg-gray-900 p-6 rounded-lg shadow">
-        <div>
-          <label className="block font-semibold mb-1">Select Delivered Order</label>
-          <select
-            value={selectedOrderId}
-            onChange={(e) => setSelectedOrderId(e.target.value)}
-            className="w-full border px-3 py-2 rounded"
+      {loading ? (
+        <p>Loading your orders...</p>
+      ) : (
+        <div className="space-y-4 bg-white dark:bg-gray-800 p-4 rounded shadow">
+          <label className="block">
+            <span className="text-sm font-medium">Select Order</span>
+            <select
+              value={selectedOrderId}
+              onChange={(e) => setSelectedOrderId(e.target.value)}
+              className="w-full border px-3 py-2 rounded mt-1"
+            >
+              <option value="">-- Select an order --</option>
+              {orders.map((order) => (
+                <option key={order.id} value={order.id}>
+                  #{order.id} - {order.product_name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium">Reason for Return</span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              className="w-full border px-3 py-2 rounded mt-1"
+              placeholder="Describe the reason for return..."
+            ></textarea>
+          </label>
+
+          <button
+            onClick={submitReturnRequest}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
-            <option value="">Select Order</option>
-            {orders.map((order) => (
-              <option key={order.id} value={order.id}>
-                #{order.id} - {new Date(order.created_at).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
+            Submit Request
+          </button>
         </div>
-
-        <div>
-          <label className="block font-semibold mb-1">Request Type</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="w-full border px-3 py-2 rounded"
-          >
-            <option value="return">Return</option>
-            <option value="replace">Replace</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block font-semibold mb-1">Reason</label>
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={4}
-            placeholder="Explain why you want to return or replace..."
-            className="w-full border px-4 py-2 rounded"
-          ></textarea>
-        </div>
-
-        <button
-          onClick={submitRequest}
-          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-        >
-          Submit Request
-        </button>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+// Page: EditProduct.tsx
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/SupabaseClient";
 import { useNavigate, useParams } from "react-router-dom";

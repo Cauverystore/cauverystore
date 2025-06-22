@@ -1,0 +1,11 @@
+# === Global Functions Configuration ===
+[functions]
+# ❌ remove or comment out env_file — Supabase will auto-load `.env`
+
+# === notify-return-status Edge Function ===
+[functions.notify-return-status]
+enabled = true
+verify_jwt = true
+import_map = "./functions/notify-return-status/deno.json"
+entrypoint = "./functions/notify-return-status/index.ts"
+# env_file = ".env" ✅ optionally move it here if needed per-function

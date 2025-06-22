@@ -1,13 +1,13 @@
 // src/pages/EditProfilePage.tsx
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet-async';
 
 export default function EditProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,82 +18,104 @@ export default function EditProfilePage() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return navigate("/login");
+    if (!user) {
+      navigate('/login');
+      return;
+    }
 
     const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
       .single();
 
-    if (error) toast.error("Failed to fetch profile");
-    else setProfile(data);
+    if (error) {
+      toast.error('Failed to load profile');
+    } else {
+      setProfile(data);
+    }
+
     setLoading(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleUpdate = async () => {
     const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: profile.full_name,
-        phone: profile.phone,
-        address: profile.address,
-      })
-      .eq("id", profile.id);
+      .from('profiles')
+      .update(profile)
+      .eq('id', profile.id);
 
-    if (error) toast.error("Failed to update profile");
-    else toast.success("Profile updated");
-    setSaving(false);
+    if (error) {
+      toast.error('Failed to update profile');
+    } else {
+      toast.success('Profile updated');
+    }
   };
 
-  if (loading) return <div className="p-4">Loading profile...</div>;
+  if (loading) {
+    return <div className="p-6">Loading profile...</div>;
+  }
 
   return (
-    <div className="max-w-xl mx-auto p-6 min-h-screen">
+    <div className="max-w-2xl mx-auto p-6">
+      <Helmet>
+        <title>Edit Profile | Cauverystore</title>
+      </Helmet>
       <h1 className="text-2xl font-bold mb-4 text-green-700">Edit Profile</h1>
 
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Full Name</label>
-          <input
-            name="full_name"
-            value={profile.full_name || ""}
-            onChange={handleChange}
-            className="border rounded px-4 py-2 w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Phone</label>
-          <input
-            name="phone"
-            value={profile.phone || ""}
-            onChange={handleChange}
-            className="border rounded px-4 py-2 w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Address</label>
-          <input
-            name="address"
-            value={profile.address || ""}
-            onChange={handleChange}
-            className="border rounded px-4 py-2 w-full"
-          />
-        </div>
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
+        <input
+          type="text"
+          name="name"
+          value={profile.name || ''}
+          onChange={handleChange}
+          placeholder="Full Name"
+          className="border p-2 w-full rounded"
+        />
+        <input
+          type="number"
+          name="age"
+          value={profile.age || ''}
+          onChange={handleChange}
+          placeholder="Age"
+          className="border p-2 w-full rounded"
+        />
+        <select
+          name="gender"
+          value={profile.gender || ''}
+          onChange={handleChange}
+          className="border p-2 w-full rounded"
         >
-          {saving ? "Saving..." : "Save Changes"}
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+        <select
+          name="marital_status"
+          value={profile.marital_status || ''}
+          onChange={handleChange}
+          className="border p-2 w-full rounded"
+        >
+          <option value="">Select Marital Status</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+        </select>
+        <input
+          type="text"
+          name="location"
+          value={profile.location || ''}
+          onChange={handleChange}
+          placeholder="Location"
+          className="border p-2 w-full rounded"
+        />
+        <button
+          onClick={handleUpdate}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Update Profile
         </button>
       </div>
     </div>
