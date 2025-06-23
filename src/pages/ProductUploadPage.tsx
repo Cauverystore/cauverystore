@@ -1,148 +1,127 @@
-// src/pages/ProductUploadPage.tsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabaseClient";
+// src/pages/ProductUploadPage.tsx – Fully Integrated with Supabase, UI, and Helmet SEO
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 
-import MerchantLayout from "@/layouts/MerchantLayout";
-import PageHeader from "@/components/ui/PageHeader";
-import Input from "@/components/ui/Input";
-import Textarea from "@/components/ui/Textarea";
-import Button from "@/components/ui/Button";
-import Spinner from "@/components/ui/Spinner";
+import PageHeader from '@/components/ui/PageHeader';
+import FormField from '@/components/ui/FormField';
+import LabeledInput from '@/components/ui/LabeledInput';
+import Textarea from '@/components/ui/Textarea';
+import LoadingButton from '@/components/ui/LoadingButton';
 
 export default function ProductUploadPage() {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState<number | string>("");
-  const [description, setDescription] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [stock, setStock] = useState<number | string>("");
-  const [uploading, setUploading] = useState(false);
-
   const navigate = useNavigate();
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    stock: '',
+    image_url: '',
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-    if (!name || !price || !description || !stock || !image) {
-      toast.error("All fields are required.");
+  const handleSubmit = async () => {
+    const { name, description, price, stock, image_url } = form;
+    if (!name || !description || !price || !stock || !image_url) {
+      toast.error('Please fill in all fields.');
       return;
     }
 
-    setUploading(true);
-
+    setLoading(true);
     try {
-      // Upload image to Supabase Storage
-      const fileExt = image.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `products/${fileName}`;
+      const { error } = await supabase.from('products').insert([
+        {
+          name,
+          description,
+          price: parseFloat(price),
+          stock: parseInt(stock),
+          image_url,
+        },
+      ]);
 
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(filePath, image);
+      if (error) throw error;
 
-      if (uploadError) {
-        throw new Error("Failed to upload image.");
-      }
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("product-images").getPublicUrl(filePath);
-
-      // Insert product details
-      const { error } = await supabase.from("products").insert({
-        name,
-        price: Number(price),
-        description,
-        image_url: publicUrl,
-        stock: Number(stock),
-      });
-
-      if (error) {
-        throw new Error("Failed to save product data.");
-      }
-
-      toast.success("✅ Product uploaded successfully.");
-      navigate("/merchant/products");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Something went wrong.");
+      toast.success('Product uploaded successfully!');
+      navigate('/merchant/products');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to upload product.');
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <MerchantLayout>
-      <div className="max-w-2xl mx-auto p-6">
-        <PageHeader
-          title="📦 Upload New Product"
-          subtitle="Fill in the details below to list a new product in your store."
-        />
+    <div className="max-w-2xl mx-auto p-6">
+      <Helmet>
+        <title>Upload Product | Cauvery Store</title>
+        <meta name="description" content="Add a new product to Cauvery Store." />
+      </Helmet>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 mt-6 bg-white p-6 rounded-2xl shadow-md border"
-        >
-          <Input
-            label="Product Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
+      <PageHeader title="Upload Product" subtitle="Add a new product to your store" />
+
+      <div className="space-y-4">
+        <FormField label="Product Name">
+          <LabeledInput
+            name="name"
+            value={form.name}
+            onChange={handleChange}
+            placeholder="e.g. Organic Turmeric Powder"
           />
+        </FormField>
 
-          <Input
-            label="Price (₹)"
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
-
+        <FormField label="Description">
           <Textarea
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Write a brief product description"
           />
+        </FormField>
 
-          <Input
-            label="Stock"
+        <FormField label="Price (₹)">
+          <LabeledInput
+            name="price"
             type="number"
-            value={stock}
-            onChange={(e) => setStock(e.target.value)}
-            required
+            value={form.price}
+            onChange={handleChange}
+            placeholder="e.g. 199"
           />
+        </FormField>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Product Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImage(e.target.files?.[0] || null)}
-              required
-              className="block w-full text-sm border rounded px-3 py-2"
-            />
-            {image && (
-              <img
-                src={URL.createObjectURL(image)}
-                alt="Preview"
-                className="mt-3 h-32 rounded object-cover"
-              />
-            )}
-          </div>
+        <FormField label="Stock">
+          <LabeledInput
+            name="stock"
+            type="number"
+            value={form.stock}
+            onChange={handleChange}
+            placeholder="e.g. 50"
+          />
+        </FormField>
 
-          <div className="pt-4">
-            <Button
-              type="submit"
-              className="w-full bg-green-600 text-white hover:bg-green-700"
-              disabled={uploading}
-            >
-              {uploading ? <Spinner size="sm" /> : "Upload Product"}
-            </Button>
-          </div>
-        </form>
+        <FormField label="Image URL">
+          <LabeledInput
+            name="image_url"
+            value={form.image_url}
+            onChange={handleChange}
+            placeholder="https://example.com/image.jpg"
+          />
+        </FormField>
+
+        <LoadingButton
+          loading={loading}
+          onClick={handleSubmit}
+          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+        >
+          Upload Product
+        </LoadingButton>
       </div>
-    </MerchantLayout>
+    </div>
   );
 }

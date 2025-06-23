@@ -1,3 +1,4 @@
+// src/pages/CheckoutPage.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -8,6 +9,7 @@ import LabeledInput from '@/components/ui/LabeledInput';
 import InputError from '@/components/ui/InputError';
 import LoadingButton from '@/components/ui/LoadingButton';
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -19,10 +21,13 @@ export default function CheckoutPage() {
     phone: '',
     paymentMethod: 'cod',
   });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -57,7 +62,10 @@ export default function CheckoutPage() {
           user_id: user.id,
           items: cartItems,
           shipping_address: form.address,
-          total_price: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+          total_price: cartItems.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+          ),
           payment_method: form.paymentMethod,
           status: 'pending',
         },
@@ -69,7 +77,6 @@ export default function CheckoutPage() {
       clearCart();
       navigate('/checkout/success');
     } catch (err) {
-      console.error(err);
       toast.error('Failed to place order.');
     } finally {
       setLoading(false);
@@ -78,6 +85,14 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
+      <Helmet>
+        <title>Checkout | Cauvery Store</title>
+        <meta
+          name="description"
+          content="Complete your purchase with secure checkout at Cauvery Store."
+        />
+      </Helmet>
+
       <PageHeader title="Checkout" />
 
       <div className="space-y-4">

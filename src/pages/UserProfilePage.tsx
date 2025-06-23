@@ -1,105 +1,160 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
+// src/pages/UserProfilePage.tsx – Fully Integrated with Helmet, Editable Profile, and UI
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { Helmet } from 'react-helmet';
+import toast from 'react-hot-toast';
+import PageHeader from '@/components/ui/PageHeader';
+import FormField from '@/components/ui/FormField';
+import LabeledInput from '@/components/ui/LabeledInput';
+import LoadingButton from '@/components/ui/LoadingButton';
+import Spinner from '@/components/ui/Spinner';
 
-import Button from "@/components/ui/Button";
-import PageHeader from "@/components/ui/PageHeader";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+interface Profile {
+  full_name: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+}
 
 export default function UserProfilePage() {
-  const [profile, setProfile] = useState<any>(null);
-  const [name, setName] = useState("");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [form, setForm] = useState<Profile>({
+    full_name: '',
+    email: '',
+    phone: '',
+    address: '',
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.user) {
-        toast.error("Please log in to view profile.");
-        navigate("/login");
-        return;
-      }
-
-      const userId = session.user.id;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        console.error("Error loading profile:", error);
-        toast.error("Failed to load profile.");
-      } else {
-        setProfile(data);
-        setName(data.name || "");
-      }
-
-      setLoading(false);
-    };
-
     fetchProfile();
-  }, [navigate]);
+  }, []);
 
-  const handleSave = async () => {
-    if (!profile) return;
-
-    setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ name })
-      .eq("id", profile.id);
-
-    if (error) {
-      console.error("Error saving profile:", error);
-      toast.error("Failed to save changes.");
-    } else {
-      toast.success("Profile updated successfully.");
+  const fetchProfile = async () => {
+    setLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please login to view profile');
+      return;
     }
 
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      toast.error('Failed to fetch profile');
+    } else {
+      setProfile(data);
+      setForm({
+        full_name: data.full_name || '',
+        email: user.email || '',
+        phone: data.phone,
+        address: data.address,
+      });
+    }
+
+    setLoading(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please login to save profile');
+      setSaving(false);
+      return;
+    }
+
+    const { error } = await supabase.from('profiles').upsert({
+      id: user.id,
+      full_name: form.full_name,
+      phone: form.phone,
+      address: form.address,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      toast.error('Failed to update profile');
+    } else {
+      toast.success('Profile updated!');
+      setEditMode(false);
+      fetchProfile();
+    }
     setSaving(false);
   };
 
   if (loading) {
-    return <LoadingSpinner className="mt-10" />;
+    return (
+      <div className="p-6 text-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="p-6 text-center">
+        <p>No profile found.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-xl mx-auto p-6">
-      <PageHeader title="👤 Your Profile" />
+    <div className="max-w-2xl mx-auto p-6">
+      <Helmet>
+        <title>My Profile | Cauvery Store</title>
+        <meta name="description" content="View and update your account profile at Cauvery Store." />
+      </Helmet>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded shadow space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-          <p className="mt-1 text-gray-900 dark:text-white">{profile?.email || "N/A"}</p>
-        </div>
+      <PageHeader title="My Profile" />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
-          <p className="mt-1 text-gray-900 dark:text-white capitalize">{profile?.role || "N/A"}</p>
+      {!editMode ? (
+        <div className="space-y-4">
+          <p><strong>Name:</strong> {profile.full_name}</p>
+          <p><strong>Email:</strong> {profile.email}</p>
+          <p><strong>Phone:</strong> {profile.phone || '—'}</p>
+          <p><strong>Address:</strong> {profile.address || '—'}</p>
+          <LoadingButton onClick={() => setEditMode(true)} className="mt-4 bg-green-600 text-white">
+            Edit Profile
+          </LoadingButton>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            placeholder="Enter your name"
-          />
+      ) : (
+        <div className="space-y-4">
+          <FormField label="Full Name">
+            <LabeledInput name="full_name" value={form.full_name} onChange={handleChange} />
+          </FormField>
+          <FormField label="Email">
+            <LabeledInput name="email" value={form.email} disabled />
+          </FormField>
+          <FormField label="Phone">
+            <LabeledInput name="phone" value={form.phone || ''} onChange={handleChange} />
+          </FormField>
+          <FormField label="Address">
+            <LabeledInput name="address" value={form.address || ''} onChange={handleChange} />
+          </FormField>
+          <div className="flex gap-2">
+            <LoadingButton onClick={handleSave} loading={saving} className="bg-green-600 text-white">
+              Save
+            </LoadingButton>
+            <LoadingButton onClick={() => setEditMode(false)} className="bg-gray-500 text-white">
+              Cancel
+            </LoadingButton>
+          </div>
         </div>
-
-        <div className="text-right">
-          <Button onClick={handleSave} loading={saving}>
-            Save Changes
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

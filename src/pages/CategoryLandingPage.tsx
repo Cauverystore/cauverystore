@@ -1,85 +1,120 @@
 // src/pages/CategoryLandingPage.tsx
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/supabaseClient';
+
+import PageHeader from '@/components/ui/PageHeader';
+import Spinner from '@/components/ui/Spinner';
+import EmptyState from '@/components/ui/EmptyState';
 import ProductCard from '@/components/ProductCard';
-import { Helmet } from 'react-helmet-async';
 
 interface Product {
   id: string;
   name: string;
-  description: string;
   price: number;
   image_url: string;
-  category: string;
-  subcategory?: string;
+  stock: number;
+  category_id: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
 }
 
 export default function CategoryLandingPage() {
-  const { category } = useParams();
+  const { categoryId } = useParams<{ categoryId: string }>();
+  const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProducts();
-  }, [category]);
+    if (categoryId) {
+      fetchCategoryAndProducts(categoryId);
+    }
+  }, [categoryId]);
 
-  const fetchProducts = async () => {
+  const fetchCategoryAndProducts = async (id: string) => {
     setLoading(true);
-    const { data, error } = await supabase
+
+    const { data: categoryData, error: categoryError } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (categoryError || !categoryData) {
+      navigate('/404');
+      return;
+    }
+
+    setCategory(categoryData);
+
+    const { data: productsData, error: productsError } = await supabase
       .from('products')
       .select('*')
-      .eq('category', category);
+      .eq('category_id', id)
+      .eq('is_active', true)
+      .gt('stock', 0);
 
-    if (error) {
-      console.error('Failed to load category products', error);
-      setProducts([]);
+    if (productsError) {
+      console.error(productsError);
     } else {
-      setProducts(data || []);
+      setProducts(productsData || []);
     }
+
     setLoading(false);
   };
 
-  const groupBySubcategory = () => {
-    const map: Record<string, Product[]> = {};
-    for (const product of products) {
-      const subcat = product.subcategory || 'Uncategorized';
-      if (!map[subcat]) map[subcat] = [];
-      map[subcat].push(product);
-    }
-    return map;
-  };
+  if (loading) {
+    return (
+      <div className="p-6 text-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
-  const grouped = groupBySubcategory();
+  if (!category) {
+    return (
+      <div className="p-6 text-center">
+        <EmptyState
+          title="Category Not Found"
+          description="The category you're looking for does not exist."
+          actionLabel="Go Back"
+          onAction={() => navigate('/')}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <Helmet>
-        <title>{category?.toUpperCase()} | Cauverystore</title>
-        <meta name="description" content={`Explore all products under ${category}`} />
+        <title>{category.name} | Cauvery Store</title>
+        <meta name="description" content={`Explore products under the ${category.name} category.`} />
       </Helmet>
 
-      <h1 className="text-3xl font-bold text-green-700 mb-6 capitalize">
-        {category} Products
-      </h1>
+      <PageHeader
+        title={category.name}
+        subtitle={category.description || 'Browse top products in this category'}
+      />
 
-      {loading ? (
-        <p>Loading products...</p>
-      ) : products.length === 0 ? (
-        <p>No products found in this category.</p>
+      {products.length === 0 ? (
+        <EmptyState
+          title="No Products Available"
+          description="We’re adding more products soon. Stay tuned!"
+          actionLabel="Go to Storefront"
+          onAction={() => navigate('/storefront')}
+        />
       ) : (
-        Object.entries(grouped).map(([subcat, prods]) => (
-          <div key={subcat} className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">
-              {subcat}
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {prods.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </div>
-        ))
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       )}
     </div>
   );

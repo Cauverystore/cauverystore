@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { useDarkMode } from './store/darkModeStore';
 import './styles/Ecommerce-green-theme.css';
 import Spinner from './components/Spinner';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
@@ -12,7 +13,7 @@ import CustomerLayout from './layouts/CustomerLayout';
 import AdminLayout from './layouts/AdminLayout';
 import MerchantLayout from './layouts/MerchantLayout';
 
-// Lazy-loaded pages
+// Lazy-loaded Pages
 const StorefrontPage = lazy(() => import('./pages/StorefrontPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const CartPage = lazy(() => import('./pages/CartPage'));
@@ -75,73 +76,75 @@ const App = () => {
         <Router>
           <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
           <Suspense fallback={<Spinner />}>
-            <Routes>
-              {/* Public Layout */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<StorefrontPage />} />
-                <Route path="/product/:id" element={<ProductDetailPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignupPage />} />
-                <Route path="/wishlist" element={<WishlistPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/search-results" element={<SearchResultsPage />} />
-                <Route path="/help-center" element={<HelpCenterPage />} />
-                <Route path="/terms" element={<TermsAndConditionsPage />} />
-                <Route path="/thank-you" element={<ThankYouPage />} />
-              </Route>
+            <ErrorBoundary>
+              <Routes>
+                {/* Public Layout */}
+                <Route element={<PublicLayout />}>
+                  <Route path="/" element={<StorefrontPage />} />
+                  <Route path="/product/:id" element={<ProductDetailPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignupPage />} />
+                  <Route path="/wishlist" element={<WishlistPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/search-results" element={<SearchResultsPage />} />
+                  <Route path="/help-center" element={<HelpCenterPage />} />
+                  <Route path="/terms" element={<TermsAndConditionsPage />} />
+                  <Route path="/thank-you" element={<ThankYouPage />} />
+                </Route>
 
-              {/* Customer Layout */}
-              <Route element={<CustomerLayout />}>
-                <Route path="/my-invoices" element={<MyInvoicesPage />} />
-                <Route path="/orders" element={<OrdersPage />} />
-                <Route path="/orders/:id" element={<OrderDetailPage />} />
-                <Route path="/invoice/:id" element={<OrderInvoicePage />} />
-                <Route path="/track-order" element={<TrackOrderPage />} />
-                <Route path="/return-request" element={<ReturnRequestPage />} />
-                <Route path="/return-requests/:id" element={<ReturnRequestPageDetail />} />
-                <Route path="/support-request" element={<SupportRequestPage />} />
-                <Route path="/contact-support" element={<ContactSupportPage />} />
-                <Route path="/report-product" element={<ReportProductPage />} />
-                <Route path="/payment-detail" element={<PaymentDetailPage />} />
-                <Route path="/suspend-account" element={<SuspendAccount />} />
-              </Route>
+                {/* Customer Layout */}
+                <Route element={<CustomerLayout />}>
+                  <Route path="/my-invoices" element={<MyInvoicesPage />} />
+                  <Route path="/orders" element={<OrdersPage />} />
+                  <Route path="/orders/:id" element={<OrderDetailPage />} />
+                  <Route path="/invoice/:id" element={<OrderInvoicePage />} />
+                  <Route path="/track-order" element={<TrackOrderPage />} />
+                  <Route path="/return-request" element={<ReturnRequestPage />} />
+                  <Route path="/return-requests/:id" element={<ReturnRequestPageDetail />} />
+                  <Route path="/support-request" element={<SupportRequestPage />} />
+                  <Route path="/contact-support" element={<ContactSupportPage />} />
+                  <Route path="/report-product" element={<ReportProductPage />} />
+                  <Route path="/payment-detail" element={<PaymentDetailPage />} />
+                  <Route path="/suspend-account" element={<SuspendAccount />} />
+                </Route>
 
-              {/* Admin Layout */}
-              <Route element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<AdminUsersPage />} />
-                <Route path="/admin/logs" element={<AdminLogsPage />} />
-                <Route path="/admin/orders" element={<AdminOrdersPage />} />
-                <Route path="/admin/products" element={<AdminProductsPage />} />
-                <Route path="/admin/product/:id" element={<AdminProductPage />} />
-                <Route path="/admin/product-requests" element={<AdminProductRequestPage />} />
-                <Route path="/admin/reports" element={<AdminReportPage />} />
-                <Route path="/admin/review-reports" element={<AdminReviewReportPage />} />
-                <Route path="/admin/returns" element={<AdminReturnPage />} />
-                <Route path="/admin/return/:id" element={<AdminReturnPageDetailPage />} />
-                <Route path="/admin/support-requests" element={<AdminSupportRequestsPage />} />
-                <Route path="/admin/support-request/:id" element={<AdminSupportRequestPage />} />
-                <Route path="/admin/invoices" element={<AdminInvoicePage />} />
-                <Route path="/admin/category-manager" element={<AdminCategoryManager />} />
-                <Route path="/admin/assign" element={<AdminAssignPage />} />
-              </Route>
+                {/* Admin Layout */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
+                  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route path="/admin/logs" element={<AdminLogsPage />} />
+                  <Route path="/admin/orders" element={<AdminOrdersPage />} />
+                  <Route path="/admin/products" element={<AdminProductsPage />} />
+                  <Route path="/admin/product/:id" element={<AdminProductPage />} />
+                  <Route path="/admin/product-requests" element={<AdminProductRequestPage />} />
+                  <Route path="/admin/reports" element={<AdminReportPage />} />
+                  <Route path="/admin/review-reports" element={<AdminReviewReportPage />} />
+                  <Route path="/admin/returns" element={<AdminReturnPage />} />
+                  <Route path="/admin/return/:id" element={<AdminReturnPageDetailPage />} />
+                  <Route path="/admin/support-requests" element={<AdminSupportRequestsPage />} />
+                  <Route path="/admin/support-request/:id" element={<AdminSupportRequestPage />} />
+                  <Route path="/admin/invoices" element={<AdminInvoicePage />} />
+                  <Route path="/admin/category-manager" element={<AdminCategoryManager />} />
+                  <Route path="/admin/assign" element={<AdminAssignPage />} />
+                </Route>
 
-              {/* Merchant Layout */}
-              <Route element={<ProtectedRoute allowedRoles={['merchant']}><MerchantLayout /></ProtectedRoute>}>
-                <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
-                <Route path="/merchant/orders" element={<MerchantOrdersPage />} />
-                <Route path="/merchant/products" element={<MerchantProductsPage />} />
-                <Route path="/merchant/products/add" element={<AddProductPage />} />
-                <Route path="/merchant/products/edit/:id" element={<EditProductPage />} />
-                <Route path="/merchant/invoices" element={<MerchantInvoicesPage />} />
-              </Route>
+                {/* Merchant Layout */}
+                <Route element={<ProtectedRoute allowedRoles={['merchant']}><MerchantLayout /></ProtectedRoute>}>
+                  <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+                  <Route path="/merchant/orders" element={<MerchantOrdersPage />} />
+                  <Route path="/merchant/products" element={<MerchantProductsPage />} />
+                  <Route path="/merchant/products/add" element={<AddProductPage />} />
+                  <Route path="/merchant/products/edit/:id" element={<EditProductPage />} />
+                  <Route path="/merchant/invoices" element={<MerchantInvoicesPage />} />
+                </Route>
 
-              {/* Fallback */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+                {/* 404 Fallback */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </ErrorBoundary>
           </Suspense>
         </Router>
       </div>

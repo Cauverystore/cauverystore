@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorAlert from '@/components/ui/ErrorAlert';
@@ -58,7 +59,6 @@ export default function ProductDetailPage() {
       setProduct(productData);
       setReviews(reviewData || []);
     } catch (err: any) {
-      console.error(err.message);
       setError('Failed to fetch product');
     } finally {
       setLoading(false);
@@ -117,6 +117,11 @@ export default function ProductDetailPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
+      <Helmet>
+        <title>{product.name} | Cauvery Store</title>
+        <meta name="description" content={product.description?.slice(0, 150)} />
+      </Helmet>
+
       {/* Product Section */}
       <div className="flex flex-col md:flex-row gap-6">
         <img

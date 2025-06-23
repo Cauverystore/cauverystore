@@ -3,6 +3,7 @@ import { useCartStore } from '@/stores/useCartStore';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet';
 
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -46,7 +47,6 @@ export default function CartPage() {
       if (error) throw error;
       setProducts(data || []);
     } catch (err: any) {
-      console.error(err.message);
       setError('Failed to load cart products.');
     } finally {
       setLoading(false);
@@ -66,6 +66,11 @@ export default function CartPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 min-h-screen">
+      <Helmet>
+        <title>Your Cart | Cauvery Store</title>
+        <meta name="description" content="View and manage items in your shopping cart before checkout at Cauvery Store." />
+      </Helmet>
+
       <h1 className="text-2xl font-bold mb-4 text-green-700">Shopping Cart</h1>
 
       {loading ? (
@@ -120,7 +125,7 @@ export default function CartPage() {
             <p className="text-xl font-semibold text-green-700">
               Total: ₹{total.toFixed(2)}
             </p>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex justify-end gap-2 flex-wrap">
               <Button
                 onClick={clearCart}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"

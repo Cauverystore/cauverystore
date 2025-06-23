@@ -1,5 +1,6 @@
 // src/pages/StorefrontPage.tsx
 import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/supabaseClient';
 import ProductCard from '@/components/ProductCard';
 import Button from '@/components/ui/Button';
@@ -88,11 +89,21 @@ export default function StorefrontPage() {
 
   return (
     <div className="p-4">
-      <PageHeader title="Welcome to Cauvery Store" subtitle="Browse authentic herbal and natural products" />
+      <Helmet>
+        <title>Cauverystore | Shop Herbal & Natural Products</title>
+        <meta
+          name="description"
+          content="Browse and buy authentic herbal and natural products from Cauverystore. Discover oils, herbs, grains, and more."
+        />
+      </Helmet>
 
-      {/* Controls */}
+      <PageHeader
+        title="Welcome to Cauvery Store"
+        subtitle="Browse authentic herbal and natural products"
+      />
+
+      {/* Filters and Controls */}
       <div className="flex flex-wrap gap-2 mb-4 relative z-10">
-        {/* Search Input */}
         <input
           type="text"
           placeholder="Search products..."
@@ -101,7 +112,6 @@ export default function StorefrontPage() {
           className="border p-2 rounded w-48"
         />
 
-        {/* Category Dropdown */}
         <div className="relative">
           <div
             className="border p-2 rounded bg-white cursor-pointer w-48"
@@ -129,7 +139,6 @@ export default function StorefrontPage() {
           )}
         </div>
 
-        {/* Sort Select */}
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
@@ -161,7 +170,7 @@ export default function StorefrontPage() {
       {/* Error State */}
       {error && <ErrorAlert message={error} />}
 
-      {/* Loading State */}
+      {/* Loading & Product Grid */}
       {loading ? (
         <div className="flex justify-center py-10">
           <LoadingSpinner size="lg" />
@@ -170,7 +179,6 @@ export default function StorefrontPage() {
         <EmptyState message="No products found matching your filters." />
       ) : (
         <>
-          {/* Product Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {products.map((product) => (
               <ProductCard

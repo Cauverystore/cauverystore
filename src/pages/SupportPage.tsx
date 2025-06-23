@@ -1,167 +1,178 @@
-// src/pages/SupportPage.tsx
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useLocation, useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import Spinner from "@/components/ui/Spinner";
-import Input from "@/components/ui/Input";
-import Textarea from "@/components/ui/Textarea";
-import Button from "@/components/ui/Button";
-import PageHeader from "@/components/ui/PageHeader";
+// src/pages/SupportPage.tsx – Fully Integrated with Status Filters, Threads, Admin Replies, Helmet
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
+
+import PageHeader from '@/components/ui/PageHeader';
+import Button from '@/components/ui/Button';
+import Textarea from '@/components/ui/Textarea';
+import Spinner from '@/components/ui/Spinner';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface SupportRequest {
   id: string;
-  subject: string;
-  message: string;
-  order_id?: string;
   created_at: string;
+  order_id?: string;
+  message: string;
+  status: 'open' | 'closed' | 'pending';
+  replies: {
+    id: string;
+    message: string;
+    sender: 'user' | 'admin';
+    created_at: string;
+  }[];
 }
 
 export default function SupportPage() {
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [orderId, setOrderId] = useState<string | null>(null);
   const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [filter, setFilter] = useState<'all' | 'open' | 'closed' | 'pending'>('all');
   const [loading, setLoading] = useState(true);
-
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const orderIdParam = urlParams.get("order_id");
-    if (orderIdParam) {
-      setOrderId(orderIdParam);
-    }
-
-    fetchSupportRequests();
-  }, [location.search]);
+  const [searchParams] = useSearchParams();
+  const orderIdFromQuery = searchParams.get('order_id');
 
   const fetchSupportRequests = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      toast.error("Please log in to view your support requests.");
-      navigate("/login");
-      return;
-    }
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { data, error } = await supabase
-      .from("support_requests")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("created_at", { ascending: false });
+      .from('support_requests')
+      .select('*, replies:support_replies(*)')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
 
-    if (error) {
-      toast.error("Failed to load support requests.");
-    } else {
-      setRequests(data || []);
-    }
-
+    if (!error) setRequests(data as SupportRequest[]);
     setLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    fetchSupportRequests();
+  }, []);
 
-    if (!subject || !message) {
-      toast.error("Please fill out all required fields.");
-      return;
-    }
+  const handleSubmit = async () => {
+    const trimmed = newMessage.trim();
+    if (!trimmed) return;
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
 
-    if (!session) {
-      toast.error("You must be logged in to submit a request.");
-      return;
-    }
+    const { error } = await supabase.from('support_requests').insert([
+      {
+        user_id: session.user.id,
+        message: trimmed,
+        order_id: orderIdFromQuery,
+        status: 'open',
+      },
+    ]);
 
-    const { error } = await supabase.from("support_requests").insert({
-      user_id: session.user.id,
-      order_id: orderId,
-      subject,
-      message,
-    });
-
-    if (error) {
-      toast.error("Failed to submit support request.");
-    } else {
-      toast.success("Support request submitted.");
-      setSubject("");
-      setMessage("");
-      fetchSupportRequests(); // refresh list
+    if (!error) {
+      setNewMessage('');
+      fetchSupportRequests();
     }
   };
 
+  const filteredRequests =
+    filter === 'all' ? requests : requests.filter((r) => r.status === filter);
+
   return (
     <div className="max-w-3xl mx-auto p-6">
+      <Helmet>
+        <title>Support | Cauvery Store</title>
+        <meta name="description" content="Need help? View and manage your support tickets here." />
+      </Helmet>
+
       <PageHeader
-        title="Support"
-        subtitle="Reach out for help or report an issue."
+        title="Support Center"
+        subtitle="Submit requests or follow up on ongoing issues"
       />
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded shadow p-6 space-y-4 mt-6"
-      >
-        {orderId && (
-          <div className="text-sm text-gray-600">
-            Linked to order ID: <strong>{orderId}</strong>
-          </div>
-        )}
-
-        <Input
-          label="Subject"
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          required
-        />
-
+      {/* Submit New Request */}
+      <div className="border rounded p-4 bg-gray-50 mb-6">
         <Textarea
-          label="Message"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          required
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Describe your issue or question..."
         />
-
-        <Button type="submit" className="bg-blue-600 text-white px-6 py-2">
+        <Button className="mt-2" onClick={handleSubmit}>
           Submit Request
         </Button>
-      </form>
-
-      <div className="mt-10">
-        <h3 className="text-xl font-semibold mb-4">Your Previous Requests</h3>
-        {loading ? (
-          <div className="flex justify-center py-6">
-            <Spinner />
-          </div>
-        ) : requests.length === 0 ? (
-          <p className="text-gray-600">No support requests submitted yet.</p>
-        ) : (
-          <ul className="space-y-4">
-            {requests.map((req) => (
-              <li key={req.id} className="border rounded p-4 bg-gray-50">
-                <div className="font-medium">{req.subject}</div>
-                <div className="text-sm text-gray-600 mt-1 whitespace-pre-line">
-                  {req.message}
-                </div>
-                {req.order_id && (
-                  <div className="text-sm text-gray-500 mt-2">
-                    Linked Order ID: <strong>{req.order_id}</strong>
-                  </div>
-                )}
-                <div className="text-xs text-gray-400 mt-1">
-                  Submitted on: {new Date(req.created_at).toLocaleString()}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 mb-4">
+        {['all', 'open', 'pending', 'closed'].map((tab) => (
+          <Button
+            key={tab}
+            variant={filter === tab ? 'default' : 'outline'}
+            onClick={() => setFilter(tab as any)}
+            className="capitalize"
+          >
+            {tab}
+          </Button>
+        ))}
+      </div>
+
+      {/* Requests */}
+      {loading ? (
+        <Spinner size="lg" />
+      ) : filteredRequests.length === 0 ? (
+        <EmptyState
+          title="No Support Requests"
+          description="You haven't submitted any support queries yet."
+        />
+      ) : (
+        <ul className="space-y-4">
+          {filteredRequests.map((req) => (
+            <li key={req.id} className="border rounded p-4 bg-white shadow-sm">
+              <div className="text-sm text-gray-600 space-y-1 mb-2">
+                <p>
+                  <strong>Request ID:</strong> {req.id}
+                </p>
+                {req.order_id && (
+                  <p>
+                    <strong>Order:</strong> #{req.order_id}
+                  </p>
+                )}
+                <p>
+                  <strong>Status:</strong>{' '}
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded text-white text-xs ${
+                      req.status === 'open'
+                        ? 'bg-green-600'
+                        : req.status === 'pending'
+                        ? 'bg-yellow-600'
+                        : 'bg-gray-600'
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                </p>
+                <p>
+                  <strong>Created:</strong>{' '}
+                  {new Date(req.created_at).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 border rounded p-3 mt-3 text-sm space-y-2">
+                <p><strong>You:</strong> {req.message}</p>
+                {req.replies.map((reply) => (
+                  <div key={reply.id} className="border-t pt-2">
+                    <p>
+                      <strong>{reply.sender === 'admin' ? 'Admin' : 'You'}:</strong>{' '}
+                      {reply.message}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(reply.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
-// MyOrdersPage.tsx – Enhanced with UI Components & Return/Review Flow
+// src/pages/MyOrdersPage.tsx – Fully Integrated with Return/Review/Invoice Flow + Helmet SEO
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 import { useCartStore } from '@/stores/useCartStore';
 
 import Spinner from '@/components/ui/Spinner';
@@ -127,6 +128,11 @@ export default function MyOrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <Helmet>
+        <title>My Orders | Cauvery Store</title>
+        <meta name="description" content="Track, review, and manage your Cauvery Store orders." />
+      </Helmet>
+
       <PageHeader
         title="My Orders"
         subtitle="Track, manage, and review your orders"
