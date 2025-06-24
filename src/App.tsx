@@ -3,10 +3,11 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 
 // Layouts
-import PublicLayout from "./layouts/PublicLayout";
-import CustomerLayout from "./layouts/CustomerLayout";
-import MerchantLayout from "./layouts/MerchantLayout";
-import AdminLayout from "./layouts/AdminLayout";
+// Layouts
+import PublicLayout from "./pages/layouts/PublicLayout";
+import CustomerLayout from "./pages/layouts/CustomerLayout";
+import MerchantLayout from "./pages/layouts/MerchantLayout";
+import AdminLayout from "./pages/layouts/AdminLayout";
 
 // Pages - Public
 import HomePage from "./pages/HomePage";
