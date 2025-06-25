@@ -1,120 +1,167 @@
-// src/pages/CategoryLandingPage.tsx
+// src/pages/UserProfilePage.tsx
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
 
-import PageHeader from '@/components/ui/PageHeader';
-import Spinner from '@/components/ui/Spinner';
-import EmptyState from '@/components/ui/EmptyState';
-import ProductCard from '@/components/ProductCard';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import Button from '@/components/ui/Button';
+import InputError from '@/components/ui/InputError';
 
-interface Product {
+interface Profile {
   id: string;
-  name: string;
-  price: number;
-  image_url: string;
-  stock: number;
-  category_id: string;
+  full_name: string;
+  phone?: string;
+  address?: string;
+  email?: string;
 }
 
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-export default function CategoryLandingPage() {
-  const { categoryId } = useParams<{ categoryId: string }>();
-  const [category, setCategory] = useState<Category | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
+export default function UserProfilePage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    full_name: '',
+    phone: '',
+    address: '',
+  });
 
   useEffect(() => {
-    if (categoryId) {
-      fetchCategoryAndProducts(categoryId);
-    }
-  }, [categoryId]);
+    fetchProfile();
+  }, []);
 
-  const fetchCategoryAndProducts = async (id: string) => {
+  const fetchProfile = async () => {
     setLoading(true);
+    setError('');
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    const { data: categoryData, error: categoryError } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('id', id)
-      .single();
+      if (userError || !user) {
+        setError('User not found.');
+        return;
+      }
 
-    if (categoryError || !categoryData) {
-      navigate('/404');
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        setError('Failed to load profile.');
+        return;
+      }
+
+      setProfile(data);
+      setFormData({
+        full_name: data.full_name || '',
+        phone: data.phone || '',
+        address: data.address || '',
+      });
+    } catch (err: any) {
+      console.error(err);
+      setError('Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async () => {
+    if (!formData.full_name.trim()) {
+      toast.error('Full name is required');
       return;
     }
 
-    setCategory(categoryData);
+    setLoading(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          address: formData.address,
+        })
+        .eq('id', profile?.id);
 
-    const { data: productsData, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('category_id', id)
-      .eq('is_active', true)
-      .gt('stock', 0);
+      if (updateError) {
+        toast.error('Failed to update profile');
+        return;
+      }
 
-    if (productsError) {
-      console.error(productsError);
-    } else {
-      setProducts(productsData || []);
+      toast.success('Profile updated successfully');
+      fetchProfile(); // Refresh
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 text-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!category) {
-    return (
-      <div className="p-6 text-center">
-        <EmptyState
-          title="Category Not Found"
-          description="The category you're looking for does not exist."
-          actionLabel="Go Back"
-          onAction={() => navigate('/')}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="p-6 max-w-2xl mx-auto">
       <Helmet>
-        <title>{category.name} | Cauvery Store</title>
-        <meta name="description" content={`Explore products under the ${category.name} category.`} />
+        <title>My Profile | Cauverystore</title>
+        <meta name="description" content="Update your personal profile and contact information on Cauverystore." />
       </Helmet>
 
-      <PageHeader
-        title={category.name}
-        subtitle={category.description || 'Browse top products in this category'}
-      />
+      <h1 className="text-2xl font-bold text-green-700 mb-4">My Profile</h1>
 
-      {products.length === 0 ? (
-        <EmptyState
-          title="No Products Available"
-          description="We’re adding more products soon. Stay tuned!"
-          actionLabel="Go to Storefront"
-          onAction={() => navigate('/storefront')}
-        />
+      {loading ? (
+        <LoadingSpinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <form className="space-y-4">
+          <div>
+            <label className="block font-medium text-gray-700">Full Name</label>
+            <input
+              type="text"
+              name="full_name"
+              value={formData.full_name}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+            />
+            <InputError
+              condition={!formData.full_name.trim()}
+              message="Full name is required"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-gray-700">Phone</label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-gray-700">Address</label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+              rows={3}
+            />
+          </div>
+
+          <Button type="button" onClick={handleSave}>
+            Save Changes
+          </Button>
+        </form>
       )}
     </div>
   );

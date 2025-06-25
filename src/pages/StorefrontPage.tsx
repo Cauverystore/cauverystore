@@ -1,49 +1,49 @@
 // src/pages/StorefrontPage.tsx
-import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet';
-import { supabase } from '@/lib/supabaseClient';
-import ProductCard from '@/components/ProductCard';
-import Button from '@/components/ui/Button';
-import PageHeader from '@/components/ui/PageHeader';
-import EmptyState from '@/components/ui/EmptyState';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ErrorAlert from '@/components/ui/ErrorAlert';
-import { useDebounce } from '@/hooks/useDebounce';
-import { highlightMatch } from '@/utils/highlightMatch';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import ProductCard from "@/components/ProductCard";
+import Button from "@/components/ui/Button";
+import PageHeader from "@/components/ui/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { useDebounce } from "@/hooks/useDebounce";
+import { highlightMatch } from "@/utils/highlightMatch";
 
-const CATEGORIES = ['all', 'herbs', 'oils', 'grains'];
-const TAGS = ['Best Seller', 'New', 'Discount'];
+const CATEGORIES = ["all", "herbs", "oils", "grains"];
+const TAGS = ["Best Seller", "New", "Discount"];
 
 export default function StorefrontPage() {
   const [products, setProducts] = useState<any[]>([]);
-  const [sortBy, setSortBy] = useState('default');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [sortBy, setSortBy] = useState("default");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedTag, setSelectedTag] = useState("");
   const [showCategories, setShowCategories] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const pageSize = 6;
+  const [error, setError] = useState("");
 
+  const pageSize = 6;
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy, debouncedSearchTerm, selectedCategory, selectedTag, page]);
 
   const fetchProducts = async () => {
     setLoading(true);
-    setError('');
-    try {
-      let query = supabase
-        .from('products')
-        .select('*, product_reviews(rating)');
+    setError("");
 
-      if (sortBy === 'price_asc') {
-        query = query.order('price', { ascending: true });
-      } else if (sortBy === 'price_desc') {
-        query = query.order('price', { ascending: false });
+    try {
+      let query = supabase.from("products").select("*, product_reviews(rating)");
+
+      if (sortBy === "price_asc") {
+        query = query.order("price", { ascending: true });
+      } else if (sortBy === "price_desc") {
+        query = query.order("price", { ascending: false });
       }
 
       const from = (page - 1) * pageSize;
@@ -58,7 +58,7 @@ export default function StorefrontPage() {
 
       let filtered = data || [];
 
-      if (selectedCategory !== 'all') {
+      if (selectedCategory !== "all") {
         filtered = filtered.filter((p) => p.category === selectedCategory);
       }
 
@@ -77,8 +77,8 @@ export default function StorefrontPage() {
 
       setProducts(filtered);
     } catch (err: any) {
-      console.error('Unexpected error:', err);
-      setError(err.message || 'Something went wrong');
+      console.error("Unexpected error:", err);
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -88,39 +88,56 @@ export default function StorefrontPage() {
   const handleNextPage = () => setPage((prev) => prev + 1);
 
   return (
-    <div className="p-4">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <Helmet>
         <title>Cauverystore | Shop Herbal & Natural Products</title>
         <meta
           name="description"
           content="Browse and buy authentic herbal and natural products from Cauverystore. Discover oils, herbs, grains, and more."
         />
+        <meta property="og:title" content="Shop Herbal & Natural Products - Cauverystore" />
+        <meta
+          property="og:description"
+          content="Explore curated herbs, oils, and grains from verified merchants. Natural wellness starts here."
+        />
+        <meta property="og:image" content="https://cauverystore.in/og-store.jpg" />
+        <meta property="og:url" content="https://cauverystore.in/store" />
+        <meta property="og:type" content="website" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Shop Herbal & Natural Products - Cauverystore" />
+        <meta
+          name="twitter:description"
+          content="Discover oils, herbs, and grains curated for quality and purity. Only on Cauverystore."
+        />
+        <meta name="twitter:image" content="https://cauverystore.in/og-store.jpg" />
       </Helmet>
 
       <PageHeader
-        title="Welcome to Cauvery Store"
+        title="Welcome to Cauverystore"
         subtitle="Browse authentic herbal and natural products"
       />
 
-      {/* Filters and Controls */}
-      <div className="flex flex-wrap gap-2 mb-4 relative z-10">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center mb-4 relative z-10">
         <input
           type="text"
           placeholder="Search products..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="border p-2 rounded w-48"
+          className="border px-3 py-2 rounded w-48 dark:bg-gray-800 dark:text-white"
         />
 
+        {/* Category Dropdown */}
         <div className="relative">
           <div
-            className="border p-2 rounded bg-white cursor-pointer w-48"
+            className="border px-3 py-2 rounded bg-white dark:bg-gray-800 dark:text-white cursor-pointer w-48"
             onClick={() => setShowCategories((prev) => !prev)}
           >
-            {selectedCategory === 'all' ? 'All Categories' : selectedCategory}
+            {selectedCategory === "all" ? "All Categories" : selectedCategory}
           </div>
           {showCategories && (
-            <ul className="absolute z-20 bg-white border rounded mt-1 w-48 max-h-60 overflow-y-auto shadow">
+            <ul className="absolute z-20 bg-white dark:bg-gray-900 border rounded mt-1 w-48 max-h-60 overflow-y-auto shadow">
               {CATEGORIES.map((cat) => (
                 <li
                   key={cat}
@@ -128,8 +145,8 @@ export default function StorefrontPage() {
                     setSelectedCategory(cat);
                     setShowCategories(false);
                   }}
-                  className={`p-2 hover:bg-green-100 cursor-pointer ${
-                    selectedCategory === cat ? 'bg-green-200 font-semibold' : ''
+                  className={`px-3 py-2 hover:bg-green-100 dark:hover:bg-green-800 cursor-pointer ${
+                    selectedCategory === cat ? "bg-green-200 dark:bg-green-700 font-semibold" : ""
                   }`}
                 >
                   {highlightMatch(cat, searchTerm)}
@@ -139,10 +156,11 @@ export default function StorefrontPage() {
           )}
         </div>
 
+        {/* Sort Dropdown */}
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="border p-2 rounded w-48"
+          className="border px-3 py-2 rounded w-48 dark:bg-gray-800 dark:text-white"
         >
           <option value="default">Sort</option>
           <option value="price_asc">Price Low to High</option>
@@ -151,35 +169,33 @@ export default function StorefrontPage() {
       </div>
 
       {/* Tag Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex flex-wrap gap-2 mb-4">
         {TAGS.map((tag) => (
           <button
             key={tag}
-            className={`px-3 py-1 rounded-full border ${
+            className={`px-3 py-1 rounded-full border text-sm transition ${
               selectedTag === tag
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-green-100'
+                ? "bg-green-600 text-white"
+                : "bg-white text-gray-700 hover:bg-green-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-green-900"
             }`}
-            onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+            onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
           >
             {tag}
           </button>
         ))}
       </div>
 
-      {/* Error State */}
       {error && <ErrorAlert message={error} />}
 
-      {/* Loading & Product Grid */}
       {loading ? (
-        <div className="flex justify-center py-10">
+        <div className="flex justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
       ) : products.length === 0 ? (
         <EmptyState message="No products found matching your filters." />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {products.map((product) => (
               <ProductCard
                 key={product.id}

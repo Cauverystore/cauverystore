@@ -1,4 +1,4 @@
-// src/pages/CheckoutPage.tsx
+// src/pages/checkout.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -9,9 +9,9 @@ import LabeledInput from '@/components/ui/LabeledInput';
 import InputError from '@/components/ui/InputError';
 import LoadingButton from '@/components/ui/LoadingButton';
 import toast from 'react-hot-toast';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 
-export default function CheckoutPage() {
+export default function Checkout() {
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCartStore();
 
@@ -77,6 +77,7 @@ export default function CheckoutPage() {
       clearCart();
       navigate('/checkout/success');
     } catch (err) {
+      console.error('Order error:', err);
       toast.error('Failed to place order.');
     } finally {
       setLoading(false);
@@ -86,14 +87,24 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <Helmet>
-        <title>Checkout | Cauvery Store</title>
+        <title>Checkout | Cauverystore</title>
         <meta
           name="description"
-          content="Complete your purchase with secure checkout at Cauvery Store."
+          content="Complete your purchase securely on Cauverystore. Enter your details and select a payment method."
+        />
+        <meta property="og:title" content="Checkout | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Complete your order at Cauverystore with a secure and smooth checkout process."
+        />
+        <meta property="twitter:title" content="Checkout | Cauverystore" />
+        <meta
+          property="twitter:description"
+          content="Checkout your items at Cauverystore and enjoy fast delivery!"
         />
       </Helmet>
 
-      <PageHeader title="Checkout" />
+      <PageHeader title="Checkout" subtitle="Complete your purchase" />
 
       <div className="space-y-4">
         <FormField label="Full Name">

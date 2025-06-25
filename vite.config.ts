@@ -1,23 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      'react-helmet-async': 'react-helmet-async/lib/index.esm.js',
     },
   },
-  build: {
-    target: 'esnext',
-    outDir: 'dist',
-    sourcemap: false,
-    minify: 'esbuild',
-  },
-  server: {
-    port: 5173,
-    open: true,
+  optimizeDeps: {
+    include: ['react-helmet-async'],
   },
 });

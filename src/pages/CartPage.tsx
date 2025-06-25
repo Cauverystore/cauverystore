@@ -1,144 +1,159 @@
 // src/pages/CartPage.tsx
-import { useCartStore } from '@/stores/useCartStore';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
 
-import Button from '@/components/ui/Button';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ErrorAlert from '@/components/ui/ErrorAlert';
+import Button from "@/components/ui/Button";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import EmptyState from "@/components/ui/EmptyState";
+import { formatPrice } from "@/utils/formatPrice";
 
-interface Product {
+interface CartItem {
   id: string;
-  name: string;
-  price: number;
-  image_url: string;
-  stock: number;
+  product_id: string;
+  quantity: number;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    image_url: string;
+  };
 }
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, clearCart } = useCartStore();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProductDetails();
-  }, [cartItems]);
+    fetchCartItems();
+  }, []);
 
-  const fetchProductDetails = async () => {
-    if (cartItems.length === 0) {
-      setProducts([]);
-      return;
-    }
-
+  const fetchCartItems = async () => {
     setLoading(true);
-    setError('');
-
+    setError("");
     try {
-      const ids = cartItems.map((item) => item.id);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .in('id', ids);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) {
+        setError("User not logged in");
+        setLoading(false);
+        return;
+      }
 
-      if (error) throw error;
-      setProducts(data || []);
+      const { data, error: cartError } = await supabase
+        .from("cart_items")
+        .select("*, product:products(*)")
+        .eq("user_id", user.id);
+
+      if (cartError) throw cartError;
+      setCartItems(data || []);
     } catch (err: any) {
-      setError('Failed to load cart products.');
+      console.error("Fetch cart error:", err);
+      setError(err.message || "Failed to load cart items.");
     } finally {
       setLoading(false);
     }
   };
 
-  const getProduct = (id: string) => products.find((p) => p.id === id);
+  const removeFromCart = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("cart_items")
+        .delete()
+        .eq("id", itemId);
 
-  const total = cartItems.reduce((acc, item) => {
-    const product = getProduct(item.id);
-    return acc + (product ? product.price * item.quantity : 0);
-  }, 0);
+      if (error) throw error;
 
-  const handleCheckout = () => {
-    navigate('/checkout');
+      setCartItems((prev) => prev.filter((item) => item.id !== itemId));
+    } catch (err: any) {
+      console.error("Remove cart item error:", err);
+      setError("Failed to remove item.");
+    }
   };
 
+  const total = cartItems.reduce(
+    (acc, item) => acc + item.quantity * item.product.price,
+    0
+  );
+
   return (
-    <div className="max-w-4xl mx-auto p-6 min-h-screen">
+    <div className="p-6 max-w-5xl mx-auto">
       <Helmet>
-        <title>Your Cart | Cauvery Store</title>
-        <meta name="description" content="View and manage items in your shopping cart before checkout at Cauvery Store." />
+        <title>Your Cart | Cauverystore</title>
+        <meta
+          name="description"
+          content="Review items in your cart before checkout. Modify quantities or remove items from your Cauverystore cart."
+        />
+        <meta property="og:title" content="Your Cart | Cauverystore" />
+        <meta
+          property="og:description"
+          content="See the items you're about to purchase from Cauverystore."
+        />
+        <meta property="twitter:title" content="Your Cart | Cauverystore" />
+        <meta
+          property="twitter:description"
+          content="Securely review your cart before checking out at Cauverystore."
+        />
       </Helmet>
 
-      <h1 className="text-2xl font-bold mb-4 text-green-700">Shopping Cart</h1>
+      <h1 className="text-3xl font-bold text-green-700 mb-6">Your Cart</h1>
 
       {loading ? (
-        <LoadingSpinner />
+        <div className="py-12 flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
       ) : error ? (
         <ErrorAlert message={error} />
       ) : cartItems.length === 0 ? (
-        <div className="text-gray-600 text-center py-12">
-          Your cart is empty. 🛒
-        </div>
+        <EmptyState message="Your cart is empty." />
       ) : (
         <div className="space-y-6">
-          {cartItems.map((item) => {
-            const product = getProduct(item.id);
-            if (!product) return null;
-
-            return (
-              <div
-                key={item.id}
-                className="flex items-center justify-between border rounded p-4 bg-white shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                  <div>
-                    <h2 className="text-lg font-semibold text-green-700">
-                      {product.name}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      ₹{product.price} × {item.quantity}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Stock: {product.stock}
-                    </p>
-                  </div>
-                </div>
-                <Button
+          {cartItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-4 border-b pb-4"
+            >
+              <img
+                src={item.product.image_url}
+                alt={item.product.name}
+                className="w-20 h-20 object-cover rounded"
+              />
+              <div className="flex-1">
+                <h2 className="font-semibold text-lg">
+                  {item.product.name}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Qty: {item.quantity} × ₹{item.product.price}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="font-bold">
+                  {formatPrice(item.quantity * item.product.price)}
+                </p>
+                <button
                   onClick={() => removeFromCart(item.id)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-1 text-sm"
+                  className="text-red-500 hover:text-red-700 text-sm"
                 >
                   Remove
-                </Button>
+                </button>
               </div>
-            );
-          })}
-
-          {/* Totals & Actions */}
-          <div className="text-right border-t pt-4">
-            <p className="text-xl font-semibold text-green-700">
-              Total: ₹{total.toFixed(2)}
-            </p>
-            <div className="mt-4 flex justify-end gap-2 flex-wrap">
-              <Button
-                onClick={clearCart}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2"
-              >
-                Clear Cart
-              </Button>
-              <Button
-                onClick={handleCheckout}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
-              >
-                Proceed to Checkout
-              </Button>
             </div>
+          ))}
+
+          {/* Total Summary and Checkout */}
+          <div className="text-right space-y-3">
+            <p className="text-xl font-semibold text-green-800">
+              Total: {formatPrice(total)}
+            </p>
+            <Button onClick={() => navigate("/checkout")}>
+              Proceed to Checkout
+            </Button>
           </div>
         </div>
       )}

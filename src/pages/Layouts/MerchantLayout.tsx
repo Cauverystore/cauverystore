@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+// src/layouts/MerchantLayout.tsx
+import { useState } from "react";
+import { Outlet, NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
@@ -7,76 +8,81 @@ import {
   PackagePlus,
   ReceiptText,
   LogOut,
-} from 'lucide-react';
+  Menu,
+  X,
+} from "lucide-react";
+
+const navItems = [
+  { path: "/merchant/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/merchant/orders", icon: FileText, label: "Orders" },
+  { path: "/merchant/products", icon: PackageSearch, label: "Products" },
+  { path: "/merchant/products/add", icon: PackagePlus, label: "Add Product" },
+  { path: "/merchant/invoices", icon: ReceiptText, label: "Invoices" },
+];
 
 const MerchantLayout = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  const location = useLocation();
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navItems = [
-    { path: '/merchant/dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-    { path: '/merchant/orders', icon: <FileText size={18} />, label: 'Orders' },
-    { path: '/merchant/products', icon: <PackageSearch size={18} />, label: 'Products' },
-    { path: '/merchant/products/add', icon: <PackagePlus size={18} />, label: 'Add Product' },
-    { path: '/merchant/invoices', icon: <ReceiptText size={18} />, label: 'Invoices' },
-  ];
+  const NavLinks = () => (
+    <>
+      {navItems.map(({ path, icon: Icon, label }) => (
+        <NavLink
+          key={path}
+          to={path}
+          className={({ isActive }) =>
+            `flex items-center gap-2 px-3 py-2 rounded hover:bg-indigo-700 ${
+              isActive ? "bg-indigo-600 text-yellow-200 font-semibold" : "text-white"
+            }`
+          }
+          onClick={() => setMobileOpen(false)}
+        >
+          <Icon size={18} />
+          <span>{label}</span>
+        </NavLink>
+      ))}
+      <a
+        href="/logout"
+        className="flex items-center gap-2 px-3 py-2 rounded text-red-300 hover:text-red-200 mt-4"
+      >
+        <LogOut size={18} />
+        <span>Logout</span>
+      </a>
+    </>
+  );
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar */}
-      <aside className={`bg-indigo-800 text-white p-4 transition-all duration-300 ${collapsed ? 'w-20' : 'w-64'}`}>
-        {/* Collapse Toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="text-sm mb-6 hover:text-yellow-300"
-        >
-          {collapsed ? '➡️' : '⬅️ Collapse'}
-        </button>
-
-        {/* Profile Info */}
-        {!collapsed && (
-          <div className="mb-6 flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-indigo-900">
-              M
-            </div>
-            <div>
-              <div className="font-semibold">Merchant</div>
-              <div className="text-sm text-yellow-200">Store Owner</div>
-            </div>
+      {/* Sidebar (desktop) */}
+      <aside className="hidden md:flex w-64 flex-col bg-indigo-800 text-white p-4">
+        <div className="mb-6 flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-yellow-400 text-indigo-900 font-bold flex items-center justify-center">
+            M
           </div>
-        )}
-
-        {/* Nav Links */}
-        <nav className="space-y-3">
-          {navItems.map((item) => (
-            <a
-              key={item.path}
-              href={item.path}
-              className={`flex items-center gap-2 ${
-                isActive(item.path)
-                  ? 'text-yellow-300 font-semibold'
-                  : 'hover:text-yellow-300'
-              }`}
-              title={collapsed ? item.label : undefined}
-            >
-              {item.icon}
-              {!collapsed && item.label}
-            </a>
-          ))}
-          <a
-            href="/logout"
-            className="flex items-center gap-2 text-red-300 hover:text-red-200 mt-6"
-            title={collapsed ? 'Logout' : undefined}
-          >
-            <LogOut size={18} />
-            {!collapsed && 'Logout'}
-          </a>
+          <div>
+            <div className="font-semibold">Merchant</div>
+            <div className="text-sm text-yellow-200">Store Owner</div>
+          </div>
+        </div>
+        <nav className="space-y-2">
+          <NavLinks />
         </nav>
       </aside>
 
-      {/* Content Area */}
-      <main className="flex-1 p-6 text-gray-900 dark:text-white">
+      {/* Mobile Drawer */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-indigo-800 text-white p-4">
+        <div className="font-bold">Merchant Panel</div>
+        <button onClick={() => setMobileOpen((prev) => !prev)}>
+          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+      {mobileOpen && (
+        <div className="md:hidden fixed top-16 left-0 z-40 w-64 h-full bg-indigo-800 text-white p-4 space-y-2 shadow-lg">
+          <NavLinks />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-1 p-6 mt-16 md:mt-0 overflow-y-auto w-full">
         <Outlet />
       </main>
     </div>

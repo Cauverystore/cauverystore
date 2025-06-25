@@ -10,17 +10,16 @@ import MerchantLayout from "./pages/layouts/MerchantLayout";
 import AdminLayout from "./pages/layouts/AdminLayout";
 
 // Pages - Public
-import HomePage from "./pages/HomePage";
+import HomePage from "./pages/Home";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import StorefrontPage from "./pages/StorefrontPage";
-import ProductDetailPage from "./pages/ProductDetailPage";
+import ProductDetail from "./pages/ProductDetail";
 import CategoryLandingPage from "./pages/CategoryLandingPage";
 
 // Pages - Customer
 import CartPage from "./pages/CartPage";
-import CheckoutPage from "./pages/CheckoutPage";
+import CheckoutPage from "./pages/Checkout";
 import MyOrdersPage from "./pages/MyOrdersPage";
 import WishlistPage from "./pages/WishlistPage";
 import SupportPage from "./pages/SupportPage";
@@ -32,7 +31,7 @@ import MerchantOrders from "./pages/MerchantOrders";
 
 // Pages - Admin
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminSupport from "./pages/AdminSupport";
+import AdminSupport from "./pages/AdminSupportPage";
 
 // Components
 import Spinner from "./components/Spinner";
@@ -45,7 +44,7 @@ import { useDarkMode } from "./store/darkModeStore";
 import { LoadingProvider } from "./context/LoadingContext";
 
 // ✅ Styles
-import "./styles/Ecommerce-green-theme.css";
+import "./Ecommerce-green-theme.css";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -70,9 +69,8 @@ function App() {
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
                 <Route path="/store" element={<StorefrontPage />} />
-                <Route path="/product/:productId" element={<ProductDetailPage />} />
+                <Route path="/product/:productId" element={<ProductDetail />} />
                 <Route path="/category/:categoryId" element={<CategoryLandingPage />} />
               </Route>
 

@@ -1,32 +1,30 @@
-// src/pages/UserProfilePage.tsx – Fully Integrated with Helmet, Editable Profile, and UI
 import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/lib/supabaseClient';
-import { Helmet } from 'react-helmet';
 import toast from 'react-hot-toast';
-import PageHeader from '@/components/ui/PageHeader';
-import FormField from '@/components/ui/FormField';
-import LabeledInput from '@/components/ui/LabeledInput';
-import LoadingButton from '@/components/ui/LoadingButton';
-import Spinner from '@/components/ui/Spinner';
+
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import Button from '@/components/ui/Button';
+import InputError from '@/components/ui/InputError';
 
 interface Profile {
+  id: string;
   full_name: string;
-  email: string;
-  phone: string | null;
-  address: string | null;
+  phone?: string;
+  address?: string;
+  email?: string;
 }
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState<Profile>({
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
     full_name: '',
-    email: '',
     phone: '',
     address: '',
   });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -34,126 +32,152 @@ export default function UserProfilePage() {
 
   const fetchProfile = async () => {
     setLoading(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please login to view profile');
-      return;
-    }
+    setError('');
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      if (userError || !user) {
+        setError('User not found.');
+        return;
+      }
 
-    if (error) {
-      toast.error('Failed to fetch profile');
-    } else {
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        setError('Failed to load profile.');
+        return;
+      }
+
       setProfile(data);
-      setForm({
+      setFormData({
         full_name: data.full_name || '',
-        email: user.email || '',
-        phone: data.phone,
-        address: data.address,
+        phone: data.phone || '',
+        address: data.address || '',
       });
+    } catch (err: any) {
+      console.error(err);
+      setError('Something went wrong.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please login to save profile');
-      setSaving(false);
+    if (!formData.full_name.trim()) {
+      toast.error('Full name is required');
       return;
     }
 
-    const { error } = await supabase.from('profiles').upsert({
-      id: user.id,
-      full_name: form.full_name,
-      phone: form.phone,
-      address: form.address,
-      updated_at: new Date().toISOString(),
-    });
+    setLoading(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone,
+          address: formData.address,
+        })
+        .eq('id', profile?.id);
 
-    if (error) {
-      toast.error('Failed to update profile');
-    } else {
-      toast.success('Profile updated!');
-      setEditMode(false);
-      fetchProfile();
+      if (updateError) {
+        toast.error('Failed to update profile');
+        return;
+      }
+
+      toast.success('Profile updated successfully');
+      fetchProfile(); // Refresh
+    } catch (err) {
+      console.error(err);
+      toast.error('An error occurred');
+    } finally {
+      setLoading(false);
     }
-    setSaving(false);
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 text-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="p-6 text-center">
-        <p>No profile found.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="p-6 max-w-2xl mx-auto">
       <Helmet>
-        <title>My Profile | Cauvery Store</title>
-        <meta name="description" content="View and update your account profile at Cauvery Store." />
+        <title>My Profile | Cauverystore</title>
+        <meta
+          name="description"
+          content="Update your personal profile and contact information on Cauverystore."
+        />
+        <meta property="og:title" content="My Profile | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Manage your personal details and contact preferences in your Cauverystore profile."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="twitter:card" content="summary" />
+        <meta property="twitter:title" content="My Profile | Cauverystore" />
+        <meta
+          property="twitter:description"
+          content="Access and update your contact and address information in your Cauverystore profile."
+        />
       </Helmet>
 
-      <PageHeader title="My Profile" />
+      <h1 className="text-2xl font-bold text-green-700 mb-4">My Profile</h1>
 
-      {!editMode ? (
-        <div className="space-y-4">
-          <p><strong>Name:</strong> {profile.full_name}</p>
-          <p><strong>Email:</strong> {profile.email}</p>
-          <p><strong>Phone:</strong> {profile.phone || '—'}</p>
-          <p><strong>Address:</strong> {profile.address || '—'}</p>
-          <LoadingButton onClick={() => setEditMode(true)} className="mt-4 bg-green-600 text-white">
-            Edit Profile
-          </LoadingButton>
-        </div>
+      {loading ? (
+        <LoadingSpinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
       ) : (
-        <div className="space-y-4">
-          <FormField label="Full Name">
-            <LabeledInput name="full_name" value={form.full_name} onChange={handleChange} />
-          </FormField>
-          <FormField label="Email">
-            <LabeledInput name="email" value={form.email} disabled />
-          </FormField>
-          <FormField label="Phone">
-            <LabeledInput name="phone" value={form.phone || ''} onChange={handleChange} />
-          </FormField>
-          <FormField label="Address">
-            <LabeledInput name="address" value={form.address || ''} onChange={handleChange} />
-          </FormField>
-          <div className="flex gap-2">
-            <LoadingButton onClick={handleSave} loading={saving} className="bg-green-600 text-white">
-              Save
-            </LoadingButton>
-            <LoadingButton onClick={() => setEditMode(false)} className="bg-gray-500 text-white">
-              Cancel
-            </LoadingButton>
+        <form className="space-y-4">
+          <div>
+            <label className="block font-medium text-gray-700">Full Name</label>
+            <input
+              type="text"
+              name="full_name"
+              value={formData.full_name}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+            />
+            <InputError
+              condition={!formData.full_name.trim()}
+              message="Full name is required"
+            />
           </div>
-        </div>
+
+          <div>
+            <label className="block font-medium text-gray-700">Phone</label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium text-gray-700">Address</label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="border p-2 rounded w-full"
+              rows={3}
+            />
+          </div>
+
+          <Button type="button" onClick={handleSave}>
+            Save Changes
+          </Button>
+        </form>
       )}
     </div>
   );

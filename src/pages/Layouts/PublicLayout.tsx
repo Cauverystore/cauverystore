@@ -1,47 +1,98 @@
 // src/layouts/PublicLayout.tsx
-import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { ShoppingCart, User, Menu, X } from 'lucide-react';
+import logo from '@/assets/logo.png'; // Replace with your logo path
 
-const PublicLayout = () => {
+const navLinks = [
+  { path: '/', label: 'Home' },
+  { path: '/store', label: 'Store' },
+  { path: '/wishlist', label: 'Wishlist' },
+  { path: '/contact', label: 'Contact' },
+];
+
+export default function PublicLayout() {
   const location = useLocation();
-  const isHomePage = location.pathname === '/';
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-      {/* 🔔 Announcement Banner */}
-      <div className="bg-yellow-200 dark:bg-yellow-600 text-black dark:text-white text-sm text-center py-2">
-        🚚 Free shipping on orders over ₹999!
-      </div>
+    <div className="flex flex-col min-h-screen">
+      {/* Header */}
+      <header className="bg-white shadow px-4 py-3 dark:bg-gray-900 dark:text-white">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <NavLink to="/" className="flex items-center gap-2 font-bold text-lg text-green-700 dark:text-green-400">
+            <img src={logo} alt="Logo" className="h-8 w-8" />
+            CauveryStore
+          </NavLink>
 
-      {/* Navbar */}
-      <Navbar />
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-6">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'text-green-700 font-semibold'
+                    : 'hover:text-green-600 text-gray-700 dark:text-gray-300'
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            <NavLink to="/cart" className="relative hover:text-green-600">
+              <ShoppingCart size={20} />
+            </NavLink>
+            <NavLink to="/login" className="hover:text-green-600">
+              <User size={20} />
+            </NavLink>
+          </nav>
 
-      {/* 🏷 Promo Ribbon */}
-      <div className="bg-indigo-600 text-white text-center py-1 text-xs sm:text-sm">
-        🎉 Summer Sale: Get 15% off on your first purchase — Use code <strong>WELCOME15</strong>
-      </div>
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
 
-      {/* 🖼 Optional Hero Section on Home Page */}
-      {isHomePage && (
-        <section className="bg-gradient-to-r from-green-100 to-blue-100 dark:from-gray-800 dark:to-gray-700 py-16 px-6 text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold mb-4">Welcome to CauveryStore</h1>
-          <p className="text-md sm:text-lg text-gray-700 dark:text-gray-300">
-            Explore the best local products, delivered to your doorstep.
-          </p>
-        </section>
-      )}
+        {/* Mobile Nav */}
+        {menuOpen && (
+          <nav className="md:hidden mt-4 space-y-3 px-2 text-gray-700 dark:text-gray-300">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path}
+                className={({ isActive }) =>
+                  `block py-2 px-3 rounded ${
+                    isActive ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`
+                }
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            <NavLink to="/cart" className="block py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-800">
+              🛒 Cart
+            </NavLink>
+            <NavLink to="/login" className="block py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-800">
+              👤 Login
+            </NavLink>
+          </nav>
+        )}
+      </header>
 
-      {/* Main Content */}
-      <main className="flex-grow pt-10 pb-10 px-4 sm:px-8 md:px-16 lg:px-24">
+      {/* Page Content */}
+      <main className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white">
         <Outlet />
       </main>
 
       {/* Footer */}
-      <Footer />
+      <footer className="bg-white dark:bg-gray-900 text-center py-4 text-sm text-gray-500 dark:text-gray-400 mt-auto border-t dark:border-gray-700">
+        © {new Date().getFullYear()} CauveryStore. All rights reserved.
+      </footer>
     </div>
   );
-};
-
-export default PublicLayout;
+}

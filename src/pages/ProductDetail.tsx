@@ -59,6 +59,7 @@ export default function ProductDetailPage() {
       setProduct(productData);
       setReviews(reviewData || []);
     } catch (err: any) {
+      console.error(err);
       setError('Failed to fetch product');
     } finally {
       setLoading(false);
@@ -95,7 +96,7 @@ export default function ProductDetailPage() {
       toast.success('Review submitted');
       setUserReview('');
       setUserRating(0);
-      fetchProduct();
+      fetchProduct(); // Refresh reviews
     }
   };
 
@@ -150,9 +151,7 @@ export default function ProductDetailPage() {
           <ul className="space-y-4">
             {reviews.map((review) => (
               <li key={review.id} className="border-b pb-2">
-                <p className="font-semibold text-sm">
-                  ⭐ {review.rating}/5
-                </p>
+                <p className="font-semibold text-sm">⭐ {review.rating}/5</p>
                 <p className="text-gray-600 text-sm">{review.review}</p>
               </li>
             ))}
@@ -160,7 +159,7 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      {/* Add a Review */}
+      {/* Leave a Review */}
       <div>
         <h3 className="text-xl font-semibold text-green-700 mb-2">
           Leave a Review
