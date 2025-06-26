@@ -4,10 +4,10 @@ import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "sonner";
 
 // Layouts
-import PublicLayout from "@/layouts/PublicLayout";
-import CustomerLayout from "@/layouts/CustomerLayout";
-import MerchantLayout from "@/layouts/MerchantLayout";
-import AdminLayout from "@/layouts/AdminLayout";
+import PublicLayout from "@/pages/Layouts/PublicLayout";
+import CustomerLayout from "@/pages/Layouts/CustomerLayout";
+import MerchantLayout from "@/pages/Layouts/MerchantLayout";
+import AdminLayout from "@/pages/Layouts/AdminLayout";
 
 // Pages - Public
 import HomePage from "./pages/Home";
