@@ -3,7 +3,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { visualizer } from "rollup-plugin-visualizer";
-import legacy from "@vitejs/plugin-legacy";
 import { createHtmlPlugin } from "vite-plugin-html";
 import ViteCompression from "vite-plugin-compression";
 import { VitePWA } from "vite-plugin-pwa";
@@ -11,9 +10,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   plugins: [
     react(),
-    legacy({
-      targets: ["defaults", "not IE 11"],
-    }),
+
+    // Bundle visualizer for build size analysis (generates dist/stats.html)
     visualizer({
       filename: "dist/stats.html",
       open: false,
@@ -21,12 +19,16 @@ export default defineConfig({
       gzipSize: true,
       template: "treemap",
     }),
+
+    // Brotli compression for smaller asset delivery
     ViteCompression({
-      algorithm: "brotliCompress", // Also supports gzip
+      algorithm: "brotliCompress",
       ext: ".br",
       deleteOriginFile: false,
-      threshold: 10240,
+      threshold: 10240, // Compress files >10KB
     }),
+
+    // Inject preload and preconnect links into index.html
     createHtmlPlugin({
       inject: {
         data: {
@@ -40,6 +42,8 @@ export default defineConfig({
       },
       minify: true,
     }),
+
+    // PWA manifest and service worker registration
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
@@ -64,20 +68,24 @@ export default defineConfig({
       },
     }),
   ],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
   server: {
     port: 3000,
     open: true,
   },
+
   build: {
     outDir: "dist",
     sourcemap: false,
     minify: "esbuild",
     assetsInlineLimit: 8192,
+
     rollupOptions: {
       treeshake: true,
       output: {

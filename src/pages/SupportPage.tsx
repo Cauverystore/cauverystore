@@ -1,14 +1,15 @@
 // src/pages/SupportPage.tsx – Fully Integrated with Status Filters, Threads, Admin Replies, Helmet
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { useSearchParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet";
 
-import PageHeader from '@/components/ui/PageHeader';
-import { Button } from '@/components/ui/button'; // ✅ Fixed import
-import Textarea from '@/components/ui/Textarea';
-import Spinner from '@/components/ui/Spinner';
-import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from "@/components/ui/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/Textarea"; // ✅ Corrected import
+import Spinner from "@/components/ui/Spinner";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorAlert from "@/components/ui/ErrorAlert";
 
 interface SupportRequest {
   id: string;

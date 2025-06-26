@@ -6,7 +6,7 @@ import { Helmet } from "react-helmet-async";
 import PageHeader from "@/components/ui/PageHeader";
 import FormField from "@/components/ui/FormField";
 import LabeledInput from "@/components/ui/LabeledInput";
-import Textarea from "@/components/ui/Textarea";
+import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/button"; // ✅ Fixed import
 import LoadingButton from "@/components/ui/LoadingButton";
 import { useToast } from "@/components/ui/use-toast"; // ✅ Using Sonner toast
