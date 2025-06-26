@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
+// src/pages/UserProfilePage.tsx
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
 
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ErrorAlert from '@/components/ui/ErrorAlert';
-import Button from '@/components/ui/Button';
-import InputError from '@/components/ui/InputError';
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { Button } from "@/components/ui/button";
+import InputError from "@/components/ui/InputError";
 
 interface Profile {
   id: string;
@@ -19,11 +20,11 @@ interface Profile {
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
-    full_name: '',
-    phone: '',
-    address: '',
+    full_name: "",
+    phone: "",
+    address: "",
   });
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function UserProfilePage() {
 
   const fetchProfile = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const {
         data: { user },
@@ -40,30 +41,29 @@ export default function UserProfilePage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        setError('User not found.');
+        setError("User not found.");
         return;
       }
 
       const { data, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
         .single();
 
       if (profileError) {
-        setError('Failed to load profile.');
+        setError("Failed to load profile.");
         return;
       }
 
       setProfile(data);
       setFormData({
-        full_name: data.full_name || '',
-        phone: data.phone || '',
-        address: data.address || '',
+        full_name: data.full_name || "",
+        phone: data.phone || "",
+        address: data.address || "",
       });
-    } catch (err: any) {
-      console.error(err);
-      setError('Something went wrong.');
+    } catch {
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -77,31 +77,30 @@ export default function UserProfilePage() {
 
   const handleSave = async () => {
     if (!formData.full_name.trim()) {
-      toast.error('Full name is required');
+      toast.error("Full name is required");
       return;
     }
 
     setLoading(true);
     try {
       const { error: updateError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           full_name: formData.full_name,
           phone: formData.phone,
           address: formData.address,
         })
-        .eq('id', profile?.id);
+        .eq("id", profile?.id);
 
       if (updateError) {
-        toast.error('Failed to update profile');
+        toast.error("Failed to update profile");
         return;
       }
 
-      toast.success('Profile updated successfully');
-      fetchProfile(); // Refresh
-    } catch (err) {
-      console.error(err);
-      toast.error('An error occurred');
+      toast.success("Profile updated successfully");
+      fetchProfile();
+    } catch {
+      toast.error("An error occurred");
     } finally {
       setLoading(false);
     }
@@ -118,21 +117,21 @@ export default function UserProfilePage() {
         <meta property="og:title" content="My Profile | Cauverystore" />
         <meta
           property="og:description"
-          content="Manage your personal details and contact preferences in your Cauverystore profile."
+          content="Manage and update your Cauverystore profile, including name, phone, and address."
         />
-        <meta property="og:type" content="website" />
-        <meta property="twitter:card" content="summary" />
-        <meta property="twitter:title" content="My Profile | Cauverystore" />
+        <meta name="twitter:title" content="My Profile | Cauverystore" />
         <meta
-          property="twitter:description"
-          content="Access and update your contact and address information in your Cauverystore profile."
+          name="twitter:description"
+          content="Update your details on Cauverystore to ensure accurate delivery and support."
         />
       </Helmet>
 
       <h1 className="text-2xl font-bold text-green-700 mb-4">My Profile</h1>
 
       {loading ? (
-        <LoadingSpinner size="lg" />
+        <div className="py-12 flex justify-center">
+          <Spinner size="lg" />
+        </div>
       ) : error ? (
         <ErrorAlert message={error} />
       ) : (

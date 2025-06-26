@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
+
 import ProductCard from "@/components/ProductCard";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import { useDebounce } from "@/hooks/useDebounce";
 import { highlightMatch } from "@/utils/highlightMatch";
@@ -189,7 +190,7 @@ export default function StorefrontPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" />
+          <Spinner size="lg" />
         </div>
       ) : products.length === 0 ? (
         <EmptyState message="No products found matching your filters." />

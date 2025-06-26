@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
-import { useCartStore } from "@/stores/useCartStore";
+import { useCartStore } from "@/store/useCartStore";
 import { Helmet } from "react-helmet";
 
 export default function CheckoutSuccessPage() {

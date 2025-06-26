@@ -4,9 +4,9 @@ import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from '@/components/ui/ErrorAlert';
-import Button from '@/components/ui/Button';
+import { Button } from "@/components/ui/button";
 import InputError from '@/components/ui/InputError';
 
 interface Profile {

@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Helmet } from "react-helmet-async";
 import PageHeader from "@/components/ui/PageHeader";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import Spinner from "@/components/ui/Spinner"; //
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import InputError from "@/components/ui/InputError";
 import toast from "react-hot-toast";
 

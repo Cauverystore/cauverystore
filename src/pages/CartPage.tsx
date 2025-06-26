@@ -4,8 +4,8 @@ import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 
-import Button from "@/components/ui/Button";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { Button } from "@/components/ui/button"; // ✅ Fixed import (named + lowercase)
+import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatPrice } from "@/utils/formatPrice";
@@ -106,7 +106,7 @@ export default function CartPage() {
 
       {loading ? (
         <div className="py-12 flex justify-center">
-          <LoadingSpinner size="lg" />
+          <Spinner size="lg" />
         </div>
       ) : error ? (
         <ErrorAlert message={error} />

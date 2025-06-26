@@ -5,9 +5,9 @@ import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
 
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from '@/components/ui/ErrorAlert';
-import Button from '@/components/ui/Button';
+import { Button } from "@/components/ui/button"; 
 import InputError from '@/components/ui/InputError';
 
 interface Product {
@@ -59,7 +59,6 @@ export default function ProductDetailPage() {
       setProduct(productData);
       setReviews(reviewData || []);
     } catch (err: any) {
-      console.error(err);
       setError('Failed to fetch product');
     } finally {
       setLoading(false);
@@ -103,7 +102,7 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <LoadingSpinner />
+        <Spinner />
       </div>
     );
   }

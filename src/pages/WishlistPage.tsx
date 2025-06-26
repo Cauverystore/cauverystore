@@ -1,29 +1,31 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
-import PageHeader from "@/components/ui/PageHeader";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import ErrorAlert from "@/components/ui/ErrorAlert";
+
+import Spinner from "@/components/ui/Spinner";
 import EmptyState from "@/components/ui/EmptyState";
-import Button from "@/components/ui/Button";
-import toast from "react-hot-toast";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/ui/PageHeader";
+import { formatPrice } from "@/utils/formatPrice";
 
 interface WishlistItem {
   id: string;
   product_id: string;
-  created_at: string;
   product: {
     id: string;
     name: string;
-    price: number;
     image_url: string;
+    price: number;
   };
 }
 
 export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchWishlist();
@@ -32,111 +34,95 @@ export default function WishlistPage() {
   const fetchWishlist = async () => {
     setLoading(true);
     setError("");
-
     try {
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("You must be logged in");
 
-      const { data, error } = await supabase
+      if (userError || !user) {
+        setError("User not logged in");
+        return;
+      }
+
+      const { data, error: wishlistError } = await supabase
         .from("wishlist")
         .select("*, product:products(*)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id);
 
-      if (error) throw error;
+      if (wishlistError) throw wishlistError;
 
-      setWishlist(data || []);
+      setItems(data || []);
     } catch (err: any) {
-      console.error(err);
-      setError("Failed to fetch wishlist.");
+      console.error("Failed to load wishlist:", err);
+      setError("Failed to load wishlist items.");
     } finally {
       setLoading(false);
     }
   };
 
   const removeFromWishlist = async (id: string) => {
-    const { error } = await supabase.from("wishlist").delete().eq("id", id);
-    if (error) {
-      toast.error("Failed to remove item.");
-    } else {
-      toast.success("Removed from wishlist.");
-      setWishlist((prev) => prev.filter((item) => item.id !== id));
-    }
-  };
-
-  const moveToCart = async (product: WishlistItem["product"]) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return toast.error("Not logged in");
-
-    const { error } = await supabase.from("cart").insert([
-      {
-        user_id: user.id,
-        product_id: product.id,
-        quantity: 1,
-        price: product.price,
-        name: product.name,
-      },
-    ]);
-
-    if (error) {
-      toast.error("Could not move to cart");
-    } else {
-      toast.success("Added to cart");
+    try {
+      const { error } = await supabase.from("wishlist").delete().eq("id", id);
+      if (error) throw error;
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err: any) {
+      console.error("Failed to remove wishlist item:", err);
+      setError("Failed to remove item.");
     }
   };
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
       <Helmet>
-        <title>My Wishlist | Cauverystore</title>
+        <title>Your Wishlist | Cauverystore</title>
         <meta
           name="description"
-          content="View your wishlist on Cauverystore. Save favorite products and move them to cart when ready to purchase."
+          content="View and manage items you've saved to your Cauverystore wishlist."
         />
+        <meta property="og:title" content="Your Wishlist | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Check out your favorite herbal and natural products in one place."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://cauverystore.in/og-wishlist.jpg" />
+        <meta name="twitter:title" content="Your Wishlist | Cauverystore" />
+        <meta
+          name="twitter:description"
+          content="Easily access and manage your wishlist at Cauverystore."
+        />
+        <meta name="twitter:image" content="https://cauverystore.in/og-wishlist.jpg" />
       </Helmet>
 
-      <PageHeader title="My Wishlist" />
+      <PageHeader title="Your Wishlist" subtitle="Items you’ve saved for later" />
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <LoadingSpinner />
+        <div className="py-12 flex justify-center">
+          <Spinner size="lg" />
         </div>
       ) : error ? (
         <ErrorAlert message={error} />
-      ) : wishlist.length === 0 ? (
-        <EmptyState message="Your wishlist is empty." />
+      ) : items.length === 0 ? (
+        <EmptyState message="Your wishlist is currently empty." />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {wishlist.map((item) => (
-            <div
-              key={item.id}
-              className="border rounded shadow-sm bg-white dark:bg-gray-800 p-4 space-y-2"
-            >
+        <div className="space-y-6">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-4 border-b pb-4">
               <img
                 src={item.product.image_url}
                 alt={item.product.name}
-                className="w-full h-40 object-cover rounded"
+                className="w-20 h-20 object-cover rounded"
               />
-              <h3 className="font-semibold text-lg">{item.product.name}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                ₹{item.product.price}
-              </p>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  onClick={() => moveToCart(item.product)}
-                >
-                  Move to Cart
+              <div className="flex-1">
+                <h2 className="font-semibold text-lg">{item.product.name}</h2>
+                <p className="text-sm text-gray-600">{formatPrice(item.product.price)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => navigate(`/product/${item.product.id}`)}>
+                  View
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => removeFromWishlist(item.id)}
-                >
+                <Button variant="destructive" onClick={() => removeFromWishlist(item.id)}>
                   Remove
                 </Button>
               </div>

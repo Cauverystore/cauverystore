@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 
 import PageHeader from '@/components/ui/PageHeader';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button'; // ✅ Fixed import
 import Textarea from '@/components/ui/Textarea';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';

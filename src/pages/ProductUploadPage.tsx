@@ -1,127 +1,132 @@
-// src/pages/ProductUploadPage.tsx – Fully Integrated with Supabase, UI, and Helmet SEO
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
-import { Helmet } from 'react-helmet';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+import { Helmet } from "react-helmet-async";
 
-import PageHeader from '@/components/ui/PageHeader';
-import FormField from '@/components/ui/FormField';
-import LabeledInput from '@/components/ui/LabeledInput';
-import Textarea from '@/components/ui/Textarea';
-import LoadingButton from '@/components/ui/LoadingButton';
+import PageHeader from "@/components/ui/PageHeader";
+import FormField from "@/components/ui/FormField";
+import LabeledInput from "@/components/ui/LabeledInput";
+import Textarea from "@/components/ui/Textarea";
+import { Button } from "@/components/ui/button"; // ✅ Fixed import
+import LoadingButton from "@/components/ui/LoadingButton";
+import { useToast } from "@/components/ui/use-toast"; // ✅ Using Sonner toast
 
 export default function ProductUploadPage() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    stock: '',
-    image_url: '',
-  });
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async () => {
-    const { name, description, price, stock, image_url } = form;
-    if (!name || !description || !price || !stock || !image_url) {
-      toast.error('Please fill in all fields.');
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+
     try {
-      const { error } = await supabase.from('products').insert([
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("You must be logged in to upload a product.");
+      }
+
+      const { error } = await supabase.from("products").insert([
         {
           name,
           description,
           price: parseFloat(price),
-          stock: parseInt(stock),
-          image_url,
+          image_url: imageUrl,
+          merchant_id: user.id,
         },
       ]);
 
       if (error) throw error;
 
-      toast.success('Product uploaded successfully!');
-      navigate('/merchant/products');
+      toast({
+        type: "success",
+        description: "Product uploaded successfully!",
+      });
+
+      navigate("/merchant/products");
     } catch (err: any) {
-      console.error(err);
-      toast.error('Failed to upload product.');
+      console.error("Product upload error:", err.message);
+      toast({
+        type: "error",
+        description: err.message || "Failed to upload product.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="p-6 max-w-3xl mx-auto">
       <Helmet>
-        <title>Upload Product | Cauvery Store</title>
-        <meta name="description" content="Add a new product to Cauvery Store." />
+        <title>Upload Product | Cauverystore</title>
+        <meta name="description" content="Upload a new product to your Cauverystore catalog." />
+        <meta property="og:title" content="Upload Product | Cauverystore" />
+        <meta property="og:description" content="Add new items to sell in your Cauverystore shop." />
+        <meta name="twitter:title" content="Upload Product | Cauverystore" />
+        <meta name="twitter:description" content="Add new items to sell in your Cauverystore shop." />
       </Helmet>
 
-      <PageHeader title="Upload Product" subtitle="Add a new product to your store" />
+      <PageHeader title="Upload Product" subtitle="Add a new item to your store" />
 
-      <div className="space-y-4">
-        <FormField label="Product Name">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <FormField label="Product Name" required>
           <LabeledInput
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="e.g. Organic Turmeric Powder"
+            id="name"
+            placeholder="E.g., Handmade Vase"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
           />
         </FormField>
 
-        <FormField label="Description">
+        <FormField label="Description" required>
           <Textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            placeholder="Write a brief product description"
+            id="description"
+            placeholder="Brief details about the product"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
           />
         </FormField>
 
-        <FormField label="Price (₹)">
+        <FormField label="Price (INR)" required>
           <LabeledInput
-            name="price"
+            id="price"
             type="number"
-            value={form.price}
-            onChange={handleChange}
-            placeholder="e.g. 199"
+            min="0"
+            placeholder="E.g., 499"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
           />
         </FormField>
 
-        <FormField label="Stock">
+        <FormField label="Image URL" required>
           <LabeledInput
-            name="stock"
-            type="number"
-            value={form.stock}
-            onChange={handleChange}
-            placeholder="e.g. 50"
-          />
-        </FormField>
-
-        <FormField label="Image URL">
-          <LabeledInput
-            name="image_url"
-            value={form.image_url}
-            onChange={handleChange}
+            id="image-url"
             placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            required
           />
         </FormField>
 
-        <LoadingButton
-          loading={loading}
-          onClick={handleSubmit}
-          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-        >
-          Upload Product
-        </LoadingButton>
-      </div>
+        <div className="text-right">
+          {loading ? (
+            <LoadingButton label="Uploading..." />
+          ) : (
+            <Button type="submit">Upload Product</Button>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

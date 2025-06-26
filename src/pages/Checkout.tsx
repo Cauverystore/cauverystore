@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
-import { useCartStore } from '@/stores/useCartStore';
+@/store/ "@/store/useCartStore"; // ✅ correct
+import { Button } from "@/components/ui/button";
 import PageHeader from '@/components/ui/PageHeader';
 import FormField from '@/components/ui/FormField';
 import LabeledInput from '@/components/ui/LabeledInput';
