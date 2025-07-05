@@ -1,0 +1,32 @@
+name: 🧪 Full Support Flow Test
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 3 * * *' # Runs daily at 9:00 AM IST (03:30 UTC)
+
+jobs:
+  run-support-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FAILURE_WEBHOOK_URL: ${{ secrets.FAILURE_WEBHOOK_URL }}
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: ▶️ Run fullSupportTestFlow.ts
+        run: npx tsx scripts/fullSupportTestFlow.ts
