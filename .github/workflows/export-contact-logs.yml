@@ -1,0 +1,18 @@
+name: Export Contact Logs Weekly
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Every Monday at 8:00 AM UTC
+  workflow_dispatch:      # Allow manual trigger via GitHub UI
+
+jobs:
+  export-logs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Supabase Edge Function to Export Contact Logs
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/export-contact-logs
