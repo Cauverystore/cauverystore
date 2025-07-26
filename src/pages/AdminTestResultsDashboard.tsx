@@ -22,9 +22,9 @@ import {
 import PageHeader from "@/components/ui/PageHeader";
 import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
-import Input from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
 
 interface LogEntry {
   name: string;

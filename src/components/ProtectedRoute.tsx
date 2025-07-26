@@ -1,49 +1,46 @@
+// ✅ src/components/ProtectedRoute.tsx
+import { Navigate, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/Components/AuthProvider";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  allowedRoles?: string[]; // optional: e.g., ["admin", "merchant"]
+  allowedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [checking, setChecking] = useState(true);
+export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const verifyAccess = async () => {
+    const checkUserRole = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
-        navigate("/login");
+        setUserRole(null);
+        setLoading(false);
         return;
       }
 
-      if (allowedRoles && allowedRoles.length > 0) {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("role, status")
-          .eq("id", user.id)
-          .single();
+      const { data, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
 
-        if (error || !profile || profile.status !== "active") {
-          navigate("/not-authorized");
-          return;
-        }
-
-        if (!allowedRoles.includes(profile.role)) {
-          navigate("/not-authorized");
-          return;
-        }
-      }
-
-      setChecking(false);
+      setUserRole(data?.role ?? null);
+      setLoading(false);
     };
 
-    verifyAccess();
-  }, [user, allowedRoles, navigate]);
+    checkUserRole();
+  }, []);
 
-  if (checking) return <div className="p-4 text-center">Checking permissions...</div>;
+  if (loading) return null;
 
-  return <>{children}</>;
+  if (!userRole || (allowedRoles && !allowedRoles.includes(userRole))) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />; // ✅ REQUIRED for nested routes to work
 }

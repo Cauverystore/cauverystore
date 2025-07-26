@@ -2,131 +2,119 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
 
+import PageHeader from "@/components/ui/PageHeader";
 import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import InputError from "@/components/ui/InputError";
-
-interface Profile {
-  id: string;
-  full_name: string;
-  phone?: string;
-  address?: string;
-  email?: string;
-}
+import toast from "react-hot-toast";
 
 export default function UserProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
-    full_name: "",
-    phone: "",
-    address: "",
-  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (typeof window === "undefined") return;
 
-  const fetchProfile = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setError("User not found.");
+    const fetchProfile = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setError("You must be logged in to view your profile.");
+        setLoading(false);
+        setAuthChecked(true);
         return;
       }
 
-      const { data, error: profileError } = await supabase
+      setAuthChecked(true);
+      const userId = data.session.user.id;
+
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
 
       if (profileError) {
         setError("Failed to load profile.");
-        return;
+      } else {
+        setProfile(profileData);
+        setName(profileData.name || "");
+
+        // ✅ GA4 Event: View Profile
+        if (typeof window !== "undefined" && window.gtag) {
+          window.gtag("event", "view_user_profile", {
+            user_id: userId,
+          });
+        }
       }
 
-      setProfile(data);
-      setFormData({
-        full_name: data.full_name || "",
-        phone: data.phone || "",
-        address: data.address || "",
-      });
-    } catch {
-      setError("Something went wrong.");
-    } finally {
       setLoading(false);
-    }
-  };
+    };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+    fetchProfile();
+  }, []);
 
   const handleSave = async () => {
-    if (!formData.full_name.trim()) {
-      toast.error("Full name is required");
-      return;
-    }
+    setSaving(true);
+    setError(null);
 
-    setLoading(true);
     try {
-      const { error: updateError } = await supabase
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { error } = await supabase
         .from("profiles")
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone,
-          address: formData.address,
-        })
-        .eq("id", profile?.id);
+        .update({ name })
+        .eq("id", user.id);
 
-      if (updateError) {
-        toast.error("Failed to update profile");
-        return;
+      if (error) throw error;
+
+      toast.success("Profile updated");
+
+      // ✅ GA4 Event: Update Profile
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "update_user_profile", {
+          user_id: user.id,
+          updated_name: name,
+        });
       }
-
-      toast.success("Profile updated successfully");
-      fetchProfile();
-    } catch {
-      toast.error("An error occurred");
+    } catch (err: any) {
+      console.error("Profile update failed:", err);
+      setError(err.message || "Failed to update profile.");
+      toast.error("Error updating profile");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <Helmet>
-        <title>My Profile | Cauverystore</title>
+        <title>User Profile | Cauverystore</title>
         <meta
           name="description"
-          content="Update your personal profile and contact information on Cauverystore."
+          content="View and update your user profile including name and preferences."
         />
-        <meta property="og:title" content="My Profile | Cauverystore" />
+        <meta property="og:title" content="User Profile | Cauverystore" />
         <meta
           property="og:description"
-          content="Manage and update your Cauverystore profile, including name, phone, and address."
+          content="Manage your Cauverystore user profile and settings."
         />
-        <meta name="twitter:title" content="My Profile | Cauverystore" />
+        <meta property="twitter:title" content="User Profile | Cauverystore" />
         <meta
-          name="twitter:description"
-          content="Update your details on Cauverystore to ensure accurate delivery and support."
+          property="twitter:description"
+          content="Edit your name and preferences for your Cauverystore account."
         />
       </Helmet>
 
-      <h1 className="text-2xl font-bold text-green-700 mb-4">My Profile</h1>
+      <PageHeader title="My Profile" subtitle="Manage your account settings" />
 
       {loading ? (
         <div className="py-12 flex justify-center">
@@ -135,47 +123,33 @@ export default function UserProfilePage() {
       ) : error ? (
         <ErrorAlert message={error} />
       ) : (
-        <form className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-6 bg-white dark:bg-gray-800 border rounded p-6 shadow-sm"
+        >
           <div>
-            <label className="block font-medium text-gray-700">Full Name</label>
+            <label htmlFor="name" className="block font-medium mb-1">
+              Name
+            </label>
             <input
+              id="name"
               type="text"
-              name="full_name"
-              value={formData.full_name}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-            />
-            <InputError
-              condition={!formData.full_name.trim()}
-              message="Full name is required"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full border rounded px-3 py-2"
             />
           </div>
+
+          {error && <InputError message={error} />}
 
           <div>
-            <label className="block font-medium text-gray-700">Phone</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-            />
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
-
-          <div>
-            <label className="block font-medium text-gray-700">Address</label>
-            <textarea
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-              rows={3}
-            />
-          </div>
-
-          <Button type="button" onClick={handleSave}>
-            Save Changes
-          </Button>
         </form>
       )}
     </div>

@@ -1,3 +1,4 @@
+// src/pages/ProductUploadPage.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
@@ -7,9 +8,9 @@ import PageHeader from "@/components/ui/PageHeader";
 import FormField from "@/components/ui/FormField";
 import LabeledInput from "@/components/ui/LabeledInput";
 import { Textarea } from "@/components/ui/Textarea";
-import { Button } from "@/components/ui/button"; // ✅ Fixed import
+import { Button } from "@/components/ui/Button";
 import LoadingButton from "@/components/ui/LoadingButton";
-import { useToast } from "@/components/ui/use-toast"; // ✅ Using Sonner toast
+import { useToast } from "@/components/ui/use-toast";
 
 export default function ProductUploadPage() {
   const [name, setName] = useState("");
@@ -53,7 +54,6 @@ export default function ProductUploadPage() {
 
       navigate("/merchant/products");
     } catch (err: any) {
-      console.error("Product upload error:", err.message);
       toast({
         type: "error",
         description: err.message || "Failed to upload product.",

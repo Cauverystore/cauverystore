@@ -1,0 +1,12 @@
+{
+  "clean_urls": true,
+  "trailing_slash": false,
+  "routes": {
+    "/**": "index.html"
+  },
+  "headers": {
+    "/**/*.@(js|css)": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
+  }
+}

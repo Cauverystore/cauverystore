@@ -1,62 +1,106 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import EmptyState from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+
+interface ReportUnion {
+  id: string;
+  type: "product" | "review" | "general";
+  subject?: string;
+  message?: string;
+  reason?: string;
+  reference_id: string;
+  user_id: string;
+  created_at: string;
+}
 
 export default function AdminReportsPage() {
-  const [productCount, setProductCount] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
+  const [reports, setReports] = useState<ReportUnion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchReportCounts();
+    fetchReports();
   }, []);
 
-  const fetchReportCounts = async () => {
+  const fetchReports = async () => {
     setLoading(true);
+    const { data, error } = await supabase
+      .from("unified_reports")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    const [{ count: pc }, { count: rc }] = await Promise.all([
-      supabase.from('product_reports').select('*', { count: 'exact', head: true }),
-      supabase.from('review_reports').select('*', { count: 'exact', head: true }),
-    ]);
+    if (error) setError("Unable to load consolidated reports.");
+    else setReports(data || []);
 
-    setProductCount(pc || 0);
-    setReviewCount(rc || 0);
     setLoading(false);
   };
 
+  const deleteReport = async (id: string) => {
+    const confirm = window.confirm("Are you sure you want to delete this report?");
+    if (!confirm) return;
+    const { error } = await supabase.from("unified_reports").delete().eq("id", id);
+    if (!error) fetchReports();
+  };
+
+  const renderContent = (report: ReportUnion) => {
+    switch (report.type) {
+      case "product":
+        return `Product Report - Reason: ${report.reason}`;
+      case "review":
+        return `Review Report - Reason: ${report.reason}`;
+      case "general":
+        return `General Report - Subject: ${report.subject}, Message: ${report.message}`;
+      default:
+        return "Unknown report type";
+    }
+  };
+
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <Helmet>
-        <title>Admin Report Dashboard</title>
+        <title>All Reports | Admin</title>
+        <meta name="description" content="Unified dashboard to manage all user reports." />
       </Helmet>
-      <h1 className="text-2xl font-bold mb-4 text-green-700">Reports Summary</h1>
+
+      <h1 className="text-3xl font-bold text-green-700 mb-6">All Reports</h1>
 
       {loading ? (
-        <p>Loading reports...</p>
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : reports.length === 0 ? (
+        <EmptyState message="No reports available." />
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="p-4 border rounded bg-white dark:bg-gray-800">
-            <h2 className="text-lg font-semibold mb-2 text-green-700">Product Reports</h2>
-            <p className="text-sm mb-2 text-gray-600">Total: {productCount}</p>
-            <Link
-              to="/admin/reports/products"
-              className="inline-block text-sm text-blue-600 hover:underline"
+        <div className="space-y-4">
+          {reports.map((report) => (
+            <div
+              key={report.id}
+              className="p-4 border rounded bg-white dark:bg-gray-800 shadow-sm"
             >
-              View Product Reports →
-            </Link>
-          </div>
-
-          <div className="p-4 border rounded bg-white dark:bg-gray-800">
-            <h2 className="text-lg font-semibold mb-2 text-green-700">Review Reports</h2>
-            <p className="text-sm mb-2 text-gray-600">Total: {reviewCount}</p>
-            <Link
-              to="/admin/reports/reviews"
-              className="inline-block text-sm text-blue-600 hover:underline"
-            >
-              View Review Reports →
-            </Link>
-          </div>
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    [{report.type.toUpperCase()}] Ref ID: {report.reference_id}
+                  </p>
+                  <p className="text-sm mt-1 text-gray-700">{renderContent(report)}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(report.created_at).toLocaleString()} by {report.user_id}
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteReport(report.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

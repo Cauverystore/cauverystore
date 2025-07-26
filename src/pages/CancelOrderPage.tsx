@@ -1,104 +1,166 @@
 // src/pages/CancelOrderPage.tsx
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+
+import PageHeader from "@/components/ui/PageHeader";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { Button } from "@/components/ui/Button";
+import InputError from "@/components/ui/InputError";
+import toast from "react-hot-toast";
 
 export default function CancelOrderPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    getUserAndOrders();
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      setAuthChecked(true);
+    };
+    init();
   }, []);
 
-  const getUserAndOrders = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  useEffect(() => {
+    if (!authChecked) return;
+    fetchOrders();
+  }, [authChecked]);
 
-    if (!user) return navigate("/login");
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    setUserId(user.id);
-    const { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
 
-    if (error) {
-      toast.error("Failed to fetch orders");
-    } else {
+      if (error) throw error;
       setOrders(data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to load orders");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleCancel = async (orderId: string) => {
-    const confirm = window.confirm("Are you sure you want to cancel this order?");
-    if (!confirm) return;
+  const handleCancel = async () => {
+    if (!selectedOrderId || !cancelReason.trim()) {
+      toast.error("Please select an order and provide a reason");
+      return;
+    }
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "cancelled" })
-      .eq("id", orderId);
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "cancelled", cancel_reason: cancelReason })
+        .eq("id", selectedOrderId);
 
-    if (!error) {
-      toast.success("Order cancelled");
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId ? { ...o, status: "cancelled" } : o
-        )
-      );
-    } else toast.error("Failed to cancel order");
+      if (error) throw error;
+
+      toast.success("Order cancelled successfully");
+
+      // ✅ GA4 event: cancel_order
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "cancel_order", {
+          order_id: selectedOrderId,
+          reason: cancelReason,
+        });
+      }
+
+      setCancelReason("");
+      setSelectedOrderId("");
+      fetchOrders();
+    } catch (err: any) {
+      toast.error("Failed to cancel order");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 min-h-screen">
-      <h1 className="text-2xl font-bold text-red-700 mb-6">Cancel an Order</h1>
+    <div className="max-w-3xl mx-auto p-6">
+      <Helmet>
+        <title>Cancel Order | Cauverystore</title>
+        <meta
+          name="description"
+          content="Cancel your pending Cauverystore order by selecting a reason and confirming."
+        />
+        <meta property="og:title" content="Cancel Order | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Easily cancel pending orders on Cauverystore with a valid reason."
+        />
+        <meta name="twitter:title" content="Cancel Order | Cauverystore" />
+        <meta
+          name="twitter:description"
+          content="Visit this page to cancel any of your pending Cauverystore orders."
+        />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
+        <script>{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-3KRHXGB7JV');
+        `}</script>
+      </Helmet>
+
+      <PageHeader title="Cancel an Order" subtitle="Select a pending order to cancel" />
 
       {loading ? (
-        <p>Loading orders...</p>
+        <div className="flex justify-center py-10">
+          <Spinner size="lg" />
+        </div>
+      ) : error ? (
+        <ErrorAlert message={error} />
       ) : orders.length === 0 ? (
-        <p className="text-gray-500">You have no orders.</p>
+        <p className="text-center text-gray-600">No pending orders to cancel.</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="border p-4 rounded shadow bg-white dark:bg-gray-900"
+          <div>
+            <label className="block mb-1 font-medium">Select Order</label>
+            <select
+              value={selectedOrderId}
+              onChange={(e) => setSelectedOrderId(e.target.value)}
+              className="border rounded w-full p-2 dark:bg-gray-800 dark:text-white"
             >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-lg font-semibold text-green-700">
-                    Order #{order.id}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Status:{" "}
-                    <span
-                      className={`font-bold ${
-                        order.status === "cancelled"
-                          ? "text-red-600"
-                          : "text-blue-600"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </p>
-                </div>
-                {order.status === "placed" && (
-                  <button
-                    onClick={() => handleCancel(order.id)}
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                  >
-                    Cancel Order
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+              <option value="">-- Select --</option>
+              {orders.map((order) => (
+                <option key={order.id} value={order.id}>
+                  #{order.id.slice(0, 8)} - ₹{order.total_price}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block mb-1 font-medium">Reason for Cancellation</label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="border rounded w-full p-2 min-h-[100px] dark:bg-gray-800 dark:text-white"
+            />
+            <InputError message={!cancelReason && submitting ? "Reason is required" : ""} />
+          </div>
+
+          <Button onClick={handleCancel} disabled={submitting}>
+            {submitting ? "Cancelling..." : "Cancel Order"}
+          </Button>
         </div>
       )}
     </div>

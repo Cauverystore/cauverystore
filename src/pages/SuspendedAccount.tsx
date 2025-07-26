@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { FiAlertTriangle, FiLogOut, FiArrowLeft } from "react-icons/fi";
-import { useAuth } from "@/Components/AuthProvider";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function SuspendedAccount() {
   const { logout } = useAuth();

@@ -1,84 +1,98 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
-import { Helmet } from 'react-helmet-async';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import EmptyState from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 
-interface Reply {
+interface InvoiceRequest {
   id: string;
-  message: string;
+  order_id: string;
+  user_id: string;
+  status: "pending" | "generated";
   created_at: string;
-  admin_name?: string;
 }
 
-export default function AdminRepliesPage() {
-  const [replies, setReplies] = useState<Reply[]>([]);
+export default function AdminInvoiceRequestPage() {
+  const [requests, setRequests] = useState<InvoiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchReplies();
+    fetchRequests();
   }, []);
 
-  const fetchReplies = async () => {
+  const fetchRequests = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('admin_replies').select('*').order('created_at', { ascending: false });
-    if (error) {
-      toast.error('Failed to load replies');
-    } else {
-      setReplies(data || []);
-    }
+    const { data, error } = await supabase
+      .from("invoice_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) setError("Unable to load invoice requests");
+    else setRequests(data || []);
+
     setLoading(false);
   };
 
-  const deleteReply = async (id: string) => {
-    const confirm = window.confirm('Are you sure you want to delete this reply?');
-    if (!confirm) return;
-
-    const { error } = await supabase.from('admin_replies').delete().eq('id', id);
-    if (error) {
-      toast.error('Failed to delete reply');
-    } else {
-      toast.success('Reply deleted');
-      fetchReplies();
-    }
+  const markAsGenerated = async (id: string) => {
+    const { error } = await supabase
+      .from("invoice_requests")
+      .update({ status: "generated" })
+      .eq("id", id);
+    if (!error) fetchRequests();
   };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Helmet>
-        <title>Admin Replies</title>
+        <title>Invoice Requests | Admin</title>
+        <meta name="description" content="Manage invoice generation requests from users." />
       </Helmet>
-      <h1 className="text-2xl font-bold mb-4 text-green-700">Replies by Admin</h1>
+
+      <h1 className="text-3xl font-bold text-green-700 mb-6">Invoice Requests</h1>
 
       {loading ? (
-        <p>Loading replies...</p>
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : requests.length === 0 ? (
+        <EmptyState message="No invoice requests found." />
       ) : (
         <div className="space-y-4">
-          {replies.length === 0 ? (
-            <p className="text-gray-500">No replies available.</p>
-          ) : (
-            replies.map((reply) => (
-              <div
-                key={reply.id}
-                className="p-4 border rounded shadow bg-white dark:bg-gray-800 flex justify-between items-start"
-              >
+          {requests.map((req) => (
+            <div
+              key={req.id}
+              className="p-4 border rounded bg-white dark:bg-gray-800 shadow-sm"
+            >
+              <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">
-                    <strong>Admin:</strong> {reply.admin_name || 'Unknown'}
+                  <p className="text-sm text-gray-800">
+                    Order: <span className="font-medium">{req.order_id}</span>
                   </p>
-                  <p className="text-base text-gray-800 dark:text-gray-200">{reply.message}</p>
+                  <p className="text-sm text-gray-600 mt-1">User ID: {req.user_id}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Date(reply.created_at).toLocaleString()}
+                    Requested on {new Date(req.created_at).toLocaleString()}
                   </p>
                 </div>
-                <button
-                  onClick={() => deleteReply(reply.id)}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Delete
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs px-2 py-1 rounded font-medium text-white ${
+                      req.status === "pending" ? "bg-yellow-600" : "bg-green-600"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                  {req.status === "pending" && (
+                    <Button size="sm" onClick={() => markAsGenerated(req.id)}>
+                      Mark as Generated
+                    </Button>
+                  )}
+                </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       )}
     </div>

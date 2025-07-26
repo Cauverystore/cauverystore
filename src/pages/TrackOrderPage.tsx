@@ -1,93 +1,123 @@
 // src/pages/TrackOrderPage.tsx
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
 
 export default function TrackOrderPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-  const navigate = useNavigate();
+  const [orderId, setOrderId] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [order, setOrder] = useState<any | null>(null);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    getUserAndOrders();
-  }, []);
+  const handleTrackOrder = async () => {
+    setError("");
+    setOrder(null);
 
-  const getUserAndOrders = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return navigate("/login");
+    if (!orderId.trim() || !email.trim()) {
+      setError("Please enter both Order ID and Email.");
+      return;
+    }
 
-    setUserId(user.id);
+    setLoading(true);
+
     const { data, error } = await supabase
       .from("orders")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .select("*, order_items(*, product:product_id(name, image_url))")
+      .eq("id", orderId.trim())
+      .eq("email", email.trim())
+      .single();
 
-    if (error) toast.error("Failed to fetch orders");
-    else setOrders(data || []);
-  };
+    if (error || !data) {
+      setError("No matching order found.");
+    } else {
+      setOrder(data);
 
-  const handleSelectOrder = (order: any) => {
-    setSelectedOrder(order);
+      // ✅ Google Analytics 4: Track Order event
+      if (typeof window !== "undefined" && "gtag" in window) {
+        window.gtag("event", "track_order", {
+          order_id: data.id,
+          email: email.trim(),
+        });
+      }
+    }
+
+    setLoading(false);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 min-h-screen">
+    <div className="max-w-3xl mx-auto p-6">
+      <Helmet>
+        <title>Track Your Order | Cauverystore</title>
+        <meta name="description" content="Check your order delivery status using your order ID and email." />
+        <meta property="og:title" content="Track Your Order | Cauverystore" />
+        <meta property="og:description" content="Check your order delivery status using your order ID and email." />
+        <meta name="twitter:title" content="Track Your Order | Cauverystore" />
+        <meta name="twitter:description" content="Check your order delivery status using your order ID and email." />
+      </Helmet>
+
       <h1 className="text-2xl font-bold text-green-700 mb-6">Track Your Order</h1>
 
-      {orders.length === 0 ? (
-        <p className="text-gray-500">You haven't placed any orders yet.</p>
-      ) : (
-        <>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Select an order:</label>
-            <select
-              onChange={(e) =>
-                handleSelectOrder(orders.find((o) => o.id === e.target.value))
-              }
-              className="border px-3 py-2 rounded w-full"
-            >
-              <option value="">-- Select Order --</option>
-              {orders.map((order) => (
-                <option key={order.id} value={order.id}>
-                  Order #{order.id} - {new Date(order.created_at).toLocaleDateString()}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="space-y-4 mb-6">
+        <Input
+          type="text"
+          value={orderId}
+          onChange={(e) => setOrderId(e.target.value)}
+          placeholder="Enter your Order ID"
+        />
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your Email"
+        />
+        <Button onClick={handleTrackOrder} disabled={loading}>
+          {loading ? "Tracking..." : "Track Order"}
+        </Button>
+      </div>
 
-          {selectedOrder && (
-            <div className="border rounded p-4 bg-white dark:bg-gray-900">
-              <h2 className="text-lg font-semibold text-green-700 mb-2">
-                Order #{selectedOrder.id}
-              </h2>
-              <p>
-                <span className="font-medium">Status:</span>{" "}
-                <span className="text-blue-600">{selectedOrder.status}</span>
-              </p>
-              <p>
-                <span className="font-medium">Expected Delivery:</span>{" "}
-                {selectedOrder.expected_delivery
-                  ? new Date(selectedOrder.expected_delivery).toLocaleDateString()
-                  : "Not available"}
-              </p>
-              <p>
-                <span className="font-medium">Shipping Address:</span>{" "}
-                {selectedOrder.shipping_address}
-              </p>
-              {selectedOrder.tracking_info && (
-                <p>
-                  <span className="font-medium">Tracking Info:</span>{" "}
-                  {selectedOrder.tracking_info}
-                </p>
-              )}
-            </div>
-          )}
-        </>
+      {loading && (
+        <div className="flex justify-center py-6">
+          <Spinner size="lg" />
+        </div>
+      )}
+
+      {error && <ErrorAlert message={error} />}
+
+      {order && (
+        <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 shadow-sm">
+          <h2 className="text-xl font-semibold mb-4">Order Details</h2>
+          <p className="text-sm text-gray-600 mb-1">
+            <strong>Order ID:</strong> {order.id}
+          </p>
+          <p className="text-sm text-gray-600 mb-1">
+            <strong>Placed on:</strong> {new Date(order.created_at).toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-600 mb-3">
+            <strong>Status:</strong>{" "}
+            <span className="font-medium text-green-700">
+              {order.status || "Processing"}
+            </span>
+          </p>
+
+          <h3 className="font-semibold mb-2">Items:</h3>
+          <ul className="space-y-2">
+            {order.order_items?.map((item: any) => (
+              <li key={item.id} className="flex items-center gap-4">
+                <img
+                  src={item.product?.image_url}
+                  alt={item.product?.name}
+                  className="w-12 h-12 object-cover rounded border"
+                />
+                <span>{item.product?.name} × {item.quantity}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

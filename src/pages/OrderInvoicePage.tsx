@@ -1,120 +1,120 @@
-// Page: OrderInvoicePage.tsx
+// src/pages/OrderInvoicePage.tsx
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import { jsPDF } from "jspdf";
+import { format } from "date-fns";
 
-import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
+interface Order {
+  id: number;
+  product_name: string;
+  quantity: number;
+  total_price: number;
+  discount_applied?: number;
+  created_at: string;
+  user_id?: string;
+  email?: string;
+  delivery_address?: string;
+}
 
 export default function OrderInvoicePage() {
-  const { orderId } = useParams();
-  const navigate = useNavigate();
-  const [order, setOrder] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const invoiceRef = useRef<HTMLDivElement>(null);
+  const { id } = useParams<{ id: string }>();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (orderId) fetchOrderDetails(orderId);
-  }, [orderId]);
+    if (id) fetchOrder(id);
+  }, [id]);
 
-  const fetchOrderDetails = async (id: string) => {
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .select('*, order_items(*)')
-      .eq('id', id)
+  const fetchOrder = async (orderId: string) => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", orderId)
       .single();
 
-    if (orderError || !orderData) {
-      toast.error('Failed to fetch order');
-      navigate('/orders');
-      return;
+    if (error || !data) {
+      console.error("Invoice not found");
+    } else {
+      setOrder(data);
+
+      // ✅ GA4: view_invoice event
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "view_invoice", {
+          order_id: data.id,
+          email: data.email || "unknown",
+        });
+      }
     }
 
-    setOrder(orderData);
-
-    const productIds = orderData.order_items.map((item: any) => item.product_id);
-    const { data: productData } = await supabase
-      .from('products')
-      .select('*')
-      .in('id', productIds);
-
-    setProducts(productData || []);
+    setLoading(false);
   };
 
-  const handlePrint = () => {
-    if (!invoiceRef.current) return;
-    const printWindow = window.open('', '', 'width=800,height=600');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice #${orderId}</title>
-          <style>
-            body { font-family: sans-serif; padding: 20px; }
-            h1 { color: #1a202c; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-          </style>
-        </head>
-        <body>
-          ${invoiceRef.current.innerHTML}
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
+  const downloadPDF = () => {
+    if (!order) return;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Invoice", 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${order.id}`, 20, 35);
+    doc.text(`Product: ${order.product_name}`, 20, 45);
+    doc.text(`Quantity: ${order.quantity}`, 20, 55);
+    doc.text(`Price: ₹${order.total_price}`, 20, 65);
+    doc.text(`Discount: ₹${order.discount_applied || 0}`, 20, 75);
+    doc.text(`Net Total: ₹${order.total_price - (order.discount_applied || 0)}`, 20, 85);
+    doc.text(`Order Date: ${format(new Date(order.created_at), "dd MMM yyyy")}`, 20, 95);
+    doc.save(`Invoice_Order_${order.id}.pdf`);
   };
-
-  if (!order) return <div className="p-6">Loading invoice...</div>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto bg-white dark:bg-gray-900 text-gray-800 dark:text-white">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Invoice #{order.id}</h1>
-        <button
-          onClick={handlePrint}
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Print Invoice
-        </button>
-      </div>
+    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-900 rounded shadow">
+      <Helmet>
+        <title>Invoice | Cauverystore</title>
+        <meta name="description" content="View or download your Cauverystore order invoice." />
+        <meta property="og:title" content="Order Invoice | Cauverystore" />
+        <meta property="og:description" content="Detailed invoice of your recent Cauverystore order." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://cauverystore.in/invoice/${id}`} />
+        <meta name="twitter:title" content="Invoice | Cauverystore" />
+        <meta name="twitter:description" content="Your Cauverystore invoice is ready to download." />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
+        <script>{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-3KRHXGB7JV');
+        `}</script>
+      </Helmet>
 
-      <div ref={invoiceRef}>
-        <div className="mb-6">
-          <p><strong>Order Date:</strong> {new Date(order.created_at).toLocaleString()}</p>
-          <p><strong>Status:</strong> {order.status || 'N/A'}</p>
-        </div>
+      {loading ? (
+        <p className="text-gray-500">Loading invoice...</p>
+      ) : !order ? (
+        <div className="p-6 text-red-600 font-semibold">Invoice not found or invalid ID.</div>
+      ) : (
+        <>
+          <h1 className="text-2xl font-bold mb-4 text-green-700">Invoice</h1>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {order.order_items.map((item: any) => {
-              const product = products.find((p) => p.id === item.product_id);
-              return (
-                <tr key={item.id}>
-                  <td>{product?.name || 'Product'}</td>
-                  <td>{item.quantity}</td>
-                  <td>₹{product?.price || 0}</td>
-                  <td>₹{(product?.price || 0) * item.quantity}</td>
-                </tr>
-              );
-            })}
-            <tr>
-              <td colSpan={3} className="text-right font-bold">Total</td>
-              <td className="font-bold">₹{order.total}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          <div className="space-y-2 text-gray-800 dark:text-gray-200 text-sm">
+            <p><strong>Order ID:</strong> {order.id}</p>
+            <p><strong>Product:</strong> {order.product_name}</p>
+            <p><strong>Quantity:</strong> {order.quantity}</p>
+            <p><strong>Total Price:</strong> ₹{order.total_price}</p>
+            <p><strong>Discount Applied:</strong> ₹{order.discount_applied || 0}</p>
+            <p><strong>Net Total:</strong> ₹{order.total_price - (order.discount_applied || 0)}</p>
+            <p><strong>Ordered On:</strong> {format(new Date(order.created_at), "dd MMM yyyy")}</p>
+            <p><strong>Delivery Address:</strong> {order.delivery_address || "N/A"}</p>
+            <p><strong>Customer Email:</strong> {order.email || "N/A"}</p>
+          </div>
+
+          <button
+            onClick={downloadPDF}
+            className="mt-6 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          >
+            Download PDF
+          </button>
+        </>
+      )}
     </div>
   );
 }

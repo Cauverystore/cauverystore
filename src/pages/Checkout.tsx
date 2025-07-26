@@ -1,164 +1,259 @@
-// src/pages/checkout.tsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import { useCartStore } from "@/store/useCartStore"; // ✅ correct
-import { Button } from "@/components/ui/button";
-import PageHeader from '@/components/ui/PageHeader';
-import FormField from '@/components/ui/FormField';
-import LabeledInput from '@/components/ui/LabeledInput';
-import InputError from '@/components/ui/InputError';
-import LoadingButton from '@/components/ui/LoadingButton';
-import toast from 'react-hot-toast';
-import { Helmet } from 'react-helmet-async';
+// src/pages/Checkout.tsx
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabaseClient";
+
+import Spinner from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { formatPrice } from "@/utils/formatPrice";
+
+interface CartItem {
+  id: string;
+  product_id: string;
+  quantity: number;
+  product: {
+    name: string;
+    price: number;
+    image_url: string;
+  };
+}
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 export default function Checkout() {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { cartItems, clearCart } = useCartStore();
 
-  const [form, setForm] = useState({
-    fullName: '',
-    address: '',
-    phone: '',
-    paymentMethod: 'cod',
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  // Load Razorpay script dynamically
+  const loadRazorpayScript = () => {
+    return new Promise<void>((resolve, reject) => {
+      if (document.getElementById("razorpay-script")) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.id = "razorpay-script";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Razorpay SDK failed to load"));
+      document.body.appendChild(script);
+    });
   };
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!form.fullName.trim()) errs.fullName = 'Full name is required';
-    if (!form.address.trim()) errs.address = 'Address is required';
-    if (!form.phone.trim()) errs.phone = 'Phone number is required';
-    return errs;
-  };
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  const handleSubmit = async () => {
-    const validationErrors = validate();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        navigate("/login");
+        return;
+      }
+      setAuthChecked(true);
+    };
+    init();
+  }, [navigate]);
 
+  useEffect(() => {
+    if (!authChecked) return;
+    fetchCart();
+  }, [authChecked]);
+
+  const fetchCart = async () => {
     setLoading(true);
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      toast.error('You must be logged in to place an order');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { error } = await supabase.from('orders').insert([
-        {
-          user_id: user.id,
-          items: cartItems,
-          shipping_address: form.address,
-          total_price: cartItems.reduce(
-            (sum, item) => sum + item.price * item.quantity,
-            0
-          ),
-          payment_method: form.paymentMethod,
-          status: 'pending',
-        },
-      ]);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !user) throw userError;
+
+      const { data, error } = await supabase
+        .from("cart_items")
+        .select("*, product:products(*)")
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
-      toast.success('Order placed successfully!');
-      clearCart();
-      navigate('/checkout/success');
-    } catch (err) {
-      console.error('Order error:', err);
-      toast.error('Failed to place order.');
+      setCartItems(data || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load cart items");
     } finally {
       setLoading(false);
     }
   };
 
+  const total = cartItems.reduce(
+    (acc, item) => acc + item.quantity * item.product.price,
+    0
+  );
+
+  const handlePlaceOrder = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Prepare order items for your Supabase orders table
+      const orderItems = cartItems.map((item) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price: item.product.price,
+      }));
+
+      // Create order record in Supabase with status 'pending'
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert([
+          {
+            user_id: user.id,
+            items: orderItems,
+            status: "pending",
+          },
+        ])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Call your Supabase Edge Function to create Razorpay order
+      const res = await fetch("/api/create-razorpay-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: total,
+          currency: "INR",
+          receipt: `order_rcptid_${orderData.id}`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create Razorpay order");
+
+      const { order } = await res.json();
+
+      await loadRazorpayScript();
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "CauveryStore",
+        description: `Order #${order.id}`,
+        order_id: order.id,
+        handler: async function (response: any) {
+          // Here you can verify payment signature server-side or call a webhook
+          alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+
+          // Clear user's cart in Supabase
+          await supabase.from("cart_items").delete().eq("user_id", user.id);
+
+          // Update order status in Supabase to 'completed' (optional, ideally done via webhook)
+          await supabase
+            .from("orders")
+            .update({ status: "completed" })
+            .eq("id", orderData.id);
+
+          navigate("/thank-you");
+        },
+        prefill: {
+          email: user.email,
+        },
+        theme: {
+          color: "#2f855a",
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+      // GA4: Add Payment Info event
+      if (typeof window !== "undefined" && "gtag" in window) {
+        window.gtag("event", "add_payment_info", {
+          currency: "INR",
+          value: total,
+          email: user.email,
+        });
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to place order.");
+    }
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl mx-auto p-6">
+    <div className="p-6 max-w-3xl mx-auto">
       <Helmet>
         <title>Checkout | Cauverystore</title>
         <meta
           name="description"
-          content="Complete your purchase securely on Cauverystore. Enter your details and select a payment method."
+          content="Complete your purchase securely on Cauverystore. Review cart and place your order."
         />
         <meta property="og:title" content="Checkout | Cauverystore" />
         <meta
           property="og:description"
-          content="Complete your order at Cauverystore with a secure and smooth checkout process."
+          content="Confirm your order and proceed to payment securely."
         />
-        <meta property="twitter:title" content="Checkout | Cauverystore" />
+        <meta name="twitter:title" content="Checkout | Cauverystore" />
         <meta
-          property="twitter:description"
-          content="Checkout your items at Cauverystore and enjoy fast delivery!"
+          name="twitter:description"
+          content="Review and complete your order on Cauverystore."
         />
       </Helmet>
 
-      <PageHeader title="Checkout" subtitle="Complete your purchase" />
+      <h1 className="text-3xl font-bold text-green-700 mb-6">Checkout</h1>
 
-      <div className="space-y-4">
-        <FormField label="Full Name">
-          <LabeledInput
-            name="fullName"
-            value={form.fullName}
-            onChange={handleChange}
-            placeholder="Enter your name"
-          />
-          <InputError message={errors.fullName} />
-        </FormField>
+      {loading ? (
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : cartItems.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <div className="space-y-6">
+          {cartItems.map((item) => (
+            <div key={item.id} className="flex items-center gap-4">
+              <img
+                src={item.product.image_url}
+                alt={item.product.name}
+                className="w-16 h-16 object-cover rounded"
+              />
+              <div className="flex-1">
+                <p className="font-semibold">{item.product.name}</p>
+                <p className="text-sm text-gray-600">
+                  Qty: {item.quantity} × ₹{item.product.price}
+                </p>
+              </div>
+              <p className="font-bold">
+                {formatPrice(item.quantity * item.product.price)}
+              </p>
+            </div>
+          ))}
 
-        <FormField label="Address">
-          <LabeledInput
-            name="address"
-            value={form.address}
-            onChange={handleChange}
-            placeholder="Shipping address"
-          />
-          <InputError message={errors.address} />
-        </FormField>
-
-        <FormField label="Phone Number">
-          <LabeledInput
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="Phone number"
-          />
-          <InputError message={errors.phone} />
-        </FormField>
-
-        <FormField label="Payment Method">
-          <select
-            name="paymentMethod"
-            value={form.paymentMethod}
-            onChange={handleChange}
-            className="border rounded px-3 py-2 w-full dark:bg-gray-800 dark:text-white"
-          >
-            <option value="cod">Cash on Delivery</option>
-            <option value="upi">UPI</option>
-            <option value="card">Credit/Debit Card</option>
-          </select>
-        </FormField>
-
-        <LoadingButton
-          loading={loading}
-          onClick={handleSubmit}
-          className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-        >
-          Place Order
-        </LoadingButton>
-      </div>
+          <div className="text-right space-y-4 mt-6">
+            <p className="text-xl font-semibold text-green-800">
+              Total: {formatPrice(total)}
+            </p>
+            <Button onClick={handlePlaceOrder}>Place Order</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
+// src/pages/OrderInvoicePage.tsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
@@ -16,7 +18,7 @@ interface Order {
   delivery_address?: string;
 }
 
-export default function InvoicePage() {
+export default function OrderInvoicePage() {
   const { id } = useParams<{ id: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,15 @@ export default function InvoicePage() {
       console.error("Invoice not found");
     } else {
       setOrder(data);
+
+      // ✅ GA4 Event: view_invoice
+      if (typeof window !== "undefined" && window.gtag) {
+        window.gtag("event", "view_invoice", {
+          order_id: data.id,
+          value: data.total_price,
+          currency: "INR",
+        });
+      }
     }
 
     setLoading(false);
@@ -68,6 +79,24 @@ export default function InvoicePage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-900 rounded shadow">
+      <Helmet>
+        <title>Order Invoice | Cauverystore</title>
+        <meta name="description" content="Download or view your order invoice securely." />
+        <meta property="og:title" content="Order Invoice | Cauverystore" />
+        <meta property="og:description" content="Access your Cauverystore order invoice online." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://cauverystore.in/invoice/${id}`} />
+        <meta name="twitter:title" content="Order Invoice | Cauverystore" />
+        <meta name="twitter:description" content="Download your Cauverystore order invoice." />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
+        <script>{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-3KRHXGB7JV');
+        `}</script>
+      </Helmet>
+
       <h1 className="text-2xl font-bold mb-4 text-green-700">Invoice</h1>
 
       <div className="space-y-2 text-gray-800 dark:text-gray-200 text-sm">

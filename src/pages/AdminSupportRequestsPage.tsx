@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
 import PageHeader from "@/components/ui/PageHeader";
 import Spinner from "@/components/ui/Spinner";
-import Select from "@/components/ui/Select";
+import LabeledSelect from "@/components/ui/LabeledSelect"
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
@@ -106,7 +106,7 @@ export default function AdminReturnRequestsPage() {
       ])
     ]
       .map((row) => row.map((v) => `"${v}"`).join(","))
-      .join("\n");
+      .join("/n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);

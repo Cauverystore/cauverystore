@@ -1,27 +1,27 @@
-// src/pages/AdminProductsPage.tsx
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface Product {
   id: string;
   name: string;
   price: number;
-  original_price?: number;
   stock: number;
   category: string;
-  status: string;
-  image_url: string;
+  created_at: string;
 }
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -30,100 +30,97 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) toast.error('Failed to fetch products');
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) setError("Failed to load products");
     else setProducts(data || []);
+
     setLoading(false);
   };
 
   const deleteProduct = async (id: string) => {
-    const confirm = window.confirm('Are you sure you want to delete this product?');
+    const confirm = window.confirm("Are you sure you want to delete this product?");
     if (!confirm) return;
-    const { error } = await supabase.from('products').delete().eq('id', id);
+    const { error } = await supabase.from("products").delete().eq("id", id);
     if (!error) {
-      toast.success('Product deleted');
+      toast.success("Deleted");
       fetchProducts();
-    } else toast.error('Delete failed');
+    } else toast.error("Delete failed");
   };
 
-  const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from('products').update({ status }).eq('id', id);
-    if (!error) {
-      toast.success(`Marked as ${status}`);
-      fetchProducts();
-    } else toast.error('Status update failed');
-  };
-
-  const filtered = products
-    .filter((p) => {
-      if (filter === 'low') return p.stock <= 5;
-      if (filter === 'suspended') return p.status === 'suspended';
-      return true;
-    })
-    .filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto min-h-screen">
+    <div className="p-6 max-w-6xl mx-auto">
       <Helmet>
         <title>Admin Products</title>
+        <meta name="description" content="Manage all products in the store." />
       </Helmet>
-      <h1 className="text-2xl font-bold mb-4 text-green-700">Manage Products</h1>
 
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search..."
+      <h1 className="text-3xl font-bold mb-4 text-green-700">Product Management</h1>
+
+      <div className="mb-4">
+        <Input
+          placeholder="Search by product name"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-2 rounded"
         />
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} className="border px-3 py-2 rounded">
-          <option value="all">All</option>
-          <option value="low">Low Stock</option>
-          <option value="suspended">Suspended</option>
-        </select>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : filteredProducts.length === 0 ? (
+        <EmptyState message="No products found." />
       ) : (
-        <div className="grid gap-4">
-          {filtered.map((p) => (
-            <div key={p.id} className="flex items-center justify-between border p-4 rounded bg-white dark:bg-gray-800">
-              <div className="flex items-center gap-4">
-                <img src={p.image_url} alt={p.name} className="w-16 h-16 object-cover rounded" />
-                <div>
-                  <h3 className="text-lg font-bold text-green-700">{p.name}</h3>
-                  <p className="text-sm text-gray-500">₹{p.price}</p>
-                  <p className="text-xs text-gray-400">Category: {p.category}</p>
-                  <p className="text-xs text-gray-400">Stock: {p.stock}</p>
-                  <p className="text-xs text-gray-400">Status: {p.status}</p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={() => navigate(`/admin/products/edit/${p.id}`)}
-                  className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteProduct(p.id)}
-                  className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => updateStatus(p.id, p.status === 'active' ? 'suspended' : 'active')}
-                  className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
-                >
-                  {p.status === 'active' ? 'Suspend' : 'Activate'}
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border">
+            <thead className="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th className="px-3 py-2 border">Name</th>
+                <th className="px-3 py-2 border">Category</th>
+                <th className="px-3 py-2 border">Price</th>
+                <th className="px-3 py-2 border">Stock</th>
+                <th className="px-3 py-2 border">Added</th>
+                <th className="px-3 py-2 border">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map((product) => (
+                <tr key={product.id} className="text-center border-t">
+                  <td className="px-3 py-2 border">{product.name}</td>
+                  <td className="px-3 py-2 border">{product.category}</td>
+                  <td className="px-3 py-2 border">₹{product.price}</td>
+                  <td className="px-3 py-2 border">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full text-white ${
+                        product.stock > 0 ? "bg-green-600" : "bg-red-600"
+                      }`}
+                    >
+                      {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 border">
+                    {new Date(product.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-3 py-2 border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteProduct(product.id)}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

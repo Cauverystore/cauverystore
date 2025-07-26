@@ -1,104 +1,183 @@
-// src/layouts/CustomerLayout.tsx
-import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useState } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
-  LayoutDashboard,
-  FileText,
-  ReceiptText,
-  LifeBuoy,
-  LogOut,
   Menu,
   X,
-} from 'lucide-react';
+  Search,
+  ShoppingCart,
+  Moon,
+  Sun,
+} from "lucide-react";
+import { useDarkMode } from "@/store/darkModeStore";
+import { useCartStore } from "@/store/useCartStore";
+import logo from "@/assets/logo.png";
 
-const CustomerLayout = () => {
+export default function CustomerLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { cartItems } = useCartStore();
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname.startsWith(path);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setDrawerOpen(false);
+    }
+  };
 
-  const navItems = [
-    { path: '/profile', icon: <LayoutDashboard size={18} />, label: 'Profile' },
-    { path: '/orders', icon: <FileText size={18} />, label: 'Orders' },
-    { path: '/my-invoices', icon: <ReceiptText size={18} />, label: 'Invoices' },
-    { path: '/contact-support', icon: <LifeBuoy size={18} />, label: 'Support' },
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/store", label: "Store" },
+    { to: "/wishlist", label: "Wishlist" },
+    { to: "/orders", label: "My Orders" },
+    { to: "/support", label: "Support" },
+    { to: "/profile", label: "Profile" },
   ];
 
-  const SidebarContent = (
-    <div className="h-full flex flex-col bg-blue-700 text-white p-4 w-64 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between md:justify-start md:space-x-3">
-        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center font-bold text-blue-900">
-          C
-        </div>
-        <div className="hidden md:block">
-          <div className="font-semibold">Customer</div>
-          <div className="text-sm text-yellow-100">Welcome</div>
-        </div>
-        <button
-          onClick={() => setDrawerOpen(false)}
-          className="md:hidden ml-auto"
-        >
-          <X size={20} />
-        </button>
-      </div>
-
-      {/* Navigation */}
-      <nav className="space-y-3">
-        {navItems.map((item) => (
-          <a
-            key={item.path}
-            href={item.path}
-            className={`flex items-center gap-2 ${
-              isActive(item.path)
-                ? 'text-yellow-300 font-semibold'
-                : 'hover:text-yellow-300'
-            }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </a>
-        ))}
-        <a
-          href="/logout"
-          className="flex items-center gap-2 text-red-300 hover:text-red-200 mt-6"
-        >
-          <LogOut size={18} />
-          <span>Logout</span>
-        </a>
-      </nav>
-    </div>
-  );
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile Menu Toggle */}
-      <div className="absolute top-4 left-4 z-20 md:hidden">
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="text-blue-800 bg-white p-2 rounded shadow"
-        >
-          <Menu size={20} />
-        </button>
-      </div>
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 dark:text-white">
+      <Helmet>
+        <title>Customer Panel | CauveryStore</title>
+        <meta name="description" content="Browse products, manage orders, wishlist, and profile on CauveryStore." />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
+        <script>
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){ dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', 'G-3KRHXGB7JV', { debug_mode: true });
+          `}
+        </script>
+      </Helmet>
 
-      {/* Drawer for Mobile */}
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-800 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <NavLink to="/" className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-lg">
+            <img src={logo} alt="Logo" className="h-8 w-8" /> CauveryStore
+          </NavLink>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex gap-6 items-center">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `text-sm ${isActive ? "text-green-600 dark:text-green-400 font-semibold" : "text-gray-700 dark:text-gray-300"}`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-black dark:text-white"
+              />
+              <button type="submit" className="absolute right-1 top-1 text-gray-500 dark:text-gray-300">
+                <Search size={16} />
+              </button>
+            </form>
+
+            <NavLink to="/cart" className="relative">
+              <ShoppingCart size={20} />
+              {(cartItems?.length ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-2 bg-green-600 text-white text-xs rounded-full px-1.5">
+                  {cartItems.length}
+                </span>
+              )}
+            </NavLink>
+
+            <button onClick={toggleDarkMode} aria-label="Toggle theme">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </nav>
+
+          {/* Mobile Toggle */}
+          <button className="md:hidden text-gray-700 dark:text-gray-300" onClick={() => setDrawerOpen(true)}>
+            <Menu size={22} />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Drawer */}
       {drawerOpen && (
-        <>
-          <div className="fixed inset-0 bg-black bg-opacity-40 z-10" onClick={() => setDrawerOpen(false)} />
-          <div className="fixed top-0 left-0 h-full z-20">{SidebarContent}</div>
-        </>
+        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 backdrop-blur-sm md:hidden">
+          <div className="absolute top-0 right-0 w-64 h-full bg-white dark:bg-gray-900 shadow-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <span className="font-semibold text-lg">Menu</span>
+              <button onClick={() => setDrawerOpen(false)}>
+                <X size={22} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-sm px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-black dark:text-white"
+              />
+              <button type="submit">
+                <Search size={18} />
+              </button>
+            </form>
+
+            <nav className="flex flex-col gap-4">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setDrawerOpen(false)}
+                  className={({ isActive }) =>
+                    `text-base ${isActive ? "text-green-600 dark:text-green-400 font-semibold" : "text-gray-700 dark:text-gray-300"}`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+              <NavLink to="/cart" onClick={() => setDrawerOpen(false)} className="relative text-sm">
+                <ShoppingCart size={18} className="inline" />
+                {(cartItems?.length ?? 0) > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full px-1.5">
+                    {cartItems.length}
+                  </span>
+                )} Cart
+              </NavLink>
+
+              <button
+                onClick={() => {
+                  toggleDarkMode();
+                  setDrawerOpen(false);
+                }}
+                className="text-sm mt-6"
+              >
+                {isDarkMode ? "☀ Light Mode" : "🌙 Dark Mode"}
+              </button>
+            </nav>
+          </div>
+        </div>
       )}
 
-      {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-shrink-0">{SidebarContent}</aside>
-
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+      <main className="flex-grow w-full max-w-7xl mx-auto px-4 py-6">
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-100 dark:bg-gray-800 text-center text-sm text-gray-600 dark:text-gray-400 py-4">
+        © {new Date().getFullYear()} CauveryStore. All rights reserved.
+      </footer>
     </div>
   );
-};
-
-export default CustomerLayout;
+}
