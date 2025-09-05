@@ -5,44 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cauverystore</title>
 
+    <!-- ✅ Clean: No social trackers, no CSP, no GA, no OG/Twitter -->
+
     <!-- Razorpay -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-    <!-- PWA Manifest & Icons -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Manifest & Icons -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon-192x192.png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/icons/icon-512x512.png" sizes="512x512" />
     <meta name="theme-color" content="#16a34a" />
 
-    <!-- SEO Meta -->
+    <!-- SEO -->
     <meta name="description" content="Cauverystore is your one-stop eco-friendly e-commerce platform for unique products, secure shopping, and fast delivery." />
-
-    <!-- Open Graph (Facebook, LinkedIn, WhatsApp) -->
-    <meta property="og:title" content="Cauverystore" />
-    <meta property="og:description" content="Explore eco-conscious shopping with Cauverystore. Unique products, secure payments, fast shipping." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://cauverystore.in" />
-    <meta property="og:image" content="https://cauverystore.in/icons/icon-512x512.png" />
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Cauverystore" />
-    <meta name="twitter:description" content="Shop sustainable, support local — only at Cauverystore." />
-    <meta name="twitter:image" content="https://cauverystore.in/icons/icon-512x512.png" />
-    <meta name="twitter:site" content="@cauverystore" /> <!-- Optional if you have a Twitter handle -->
-
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag("js", new Date());
-      gtag("config", "G-3KRHXGB7JV");
-    </script>
   </head>
-
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

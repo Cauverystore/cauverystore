@@ -1,96 +1,176 @@
-// src/layouts/PublicLayout.tsx
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { useState } from 'react';
-import { ShoppingCart, User, Menu, X } from 'lucide-react';
-import logo from '@/assets/logo.png'; // Replace with your logo path
-
-const navLinks = [
-  { path: '/', label: 'Home' },
-  { path: '/store', label: 'Store' },
-  { path: '/wishlist', label: 'Wishlist' },
-  { path: '/contact', label: 'Contact' },
-];
+import { useState } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { Menu, X, Search, ShoppingCart, Moon, Sun } from "lucide-react";
+import logo from "@/assets/logo.png";
+import { useDarkMode } from "@/store/darkModeStore";
+import { useCartStore } from "@/store/useCartStore";
 
 export default function PublicLayout() {
-  const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { cartItems } = useCartStore();
+  const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname === path;
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setDrawerOpen(false);
+    }
+  };
+
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/store", label: "Store" },
+    { to: "/login", label: "Login" },
+    { to: "/signup", label: "Sign Up" },
+  ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 dark:text-white">
+      <Helmet>
+        <title>CauveryStore</title>
+        <meta name="description" content="Shop a wide range of sustainable and local products on CauveryStore." />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-3KRHXGB7JV"></script>
+        <script>
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){ dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', 'G-3KRHXGB7JV', { debug_mode: true });
+          `}
+        </script>
+      </Helmet>
+
+      {/* Announcement Banner */}
+      <div className="bg-green-600 text-white text-sm text-center py-1 px-4">
+        🎉 Flat 10% off this week! Use code <strong>WELCOME10</strong> at checkout.
+      </div>
+
       {/* Header */}
-      <header className="bg-white shadow px-4 py-3 dark:bg-gray-900 dark:text-white">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo */}
-          <NavLink to="/" className="flex items-center gap-2 font-bold text-lg text-green-700 dark:text-green-400">
-            <img src={logo} alt="Logo" className="h-8 w-8" />
-            CauveryStore
+      <header className="bg-white dark:bg-gray-800 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <NavLink to="/" className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-lg">
+            <img src={logo} alt="Logo" className="h-8 w-8" /> CauveryStore
           </NavLink>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex gap-6 items-center">
             {navLinks.map((link) => (
               <NavLink
-                key={link.path}
-                to={link.path}
+                key={link.to}
+                to={link.to}
                 className={({ isActive }) =>
-                  isActive
-                    ? 'text-green-700 font-semibold'
-                    : 'hover:text-green-600 text-gray-700 dark:text-gray-300'
+                  `text-sm ${isActive ? "text-green-600 dark:text-green-400 font-semibold" : "text-gray-700 dark:text-gray-300"}`
                 }
               >
                 {link.label}
               </NavLink>
             ))}
-            <NavLink to="/cart" className="relative hover:text-green-600">
-              <ShoppingCart size={20} />
-            </NavLink>
-            <NavLink to="/login" className="hover:text-green-600">
-              <User size={20} />
-            </NavLink>
+
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-black dark:text-white"
+              />
+              <button type="submit" className="absolute right-1 top-1 text-gray-500 dark:text-gray-300">
+                <Search size={16} />
+              </button>
+            </form>
+
+            <NavLink to="/cart" className="relative">
+  <ShoppingCart size={20} />
+  {(cartItems?.length ?? 0) > 0 && (
+    <span className="absolute -top-1 -right-2 bg-green-600 text-white text-xs rounded-full px-1.5">
+      {cartItems.length}
+    </span>
+  )}
+</NavLink> 
+            <button onClick={toggleDarkMode} aria-label="Toggle theme">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
           </nav>
 
-          {/* Mobile Menu Toggle */}
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          {/* Mobile Toggle */}
+          <button className="md:hidden text-gray-700 dark:text-gray-300" onClick={() => setDrawerOpen(true)}>
+            <Menu size={22} />
           </button>
         </div>
-
-        {/* Mobile Nav */}
-        {menuOpen && (
-          <nav className="md:hidden mt-4 space-y-3 px-2 text-gray-700 dark:text-gray-300">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.path}
-                to={link.path}
-                className={({ isActive }) =>
-                  `block py-2 px-3 rounded ${
-                    isActive ? 'bg-green-100 dark:bg-green-900' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                  }`
-                }
-                onClick={() => setMenuOpen(false)}
-              >
-                {link.label}
-              </NavLink>
-            ))}
-            <NavLink to="/cart" className="block py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-800">
-              🛒 Cart
-            </NavLink>
-            <NavLink to="/login" className="block py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-800">
-              👤 Login
-            </NavLink>
-          </nav>
-        )}
       </header>
 
-      {/* Page Content */}
-      <main className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white">
+      {/* Mobile Drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 backdrop-blur-sm md:hidden">
+          <div className="absolute top-0 right-0 w-64 h-full bg-white dark:bg-gray-900 shadow-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <span className="font-semibold text-lg">Menu</span>
+              <button onClick={() => setDrawerOpen(false)}>
+                <X size={22} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-sm px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-black dark:text-white"
+              />
+              <button type="submit">
+                <Search size={18} />
+              </button>
+            </form>
+
+            <nav className="flex flex-col gap-4">
+              {navLinks.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setDrawerOpen(false)}
+                  className={({ isActive }) =>
+                    `text-base ${isActive ? "text-green-600 dark:text-green-400 font-semibold" : "text-gray-700 dark:text-gray-300"}`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+              <NavLink to="/cart" onClick={() => setDrawerOpen(false)} className="relative text-sm">
+                <ShoppingCart size={18} className="inline" />
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full px-1.5">
+                    {cartItems.length}
+                  </span>
+                )} Cart
+              </NavLink>
+
+              <button
+                onClick={() => {
+                  toggleDarkMode();
+                  setDrawerOpen(false);
+                }}
+                className="text-sm mt-6"
+              >
+                {isDarkMode ? "☀ Light Mode" : "🌙 Dark Mode"}
+              </button>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="flex-grow w-full max-w-7xl mx-auto px-4 py-6">
         <Outlet />
       </main>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-900 text-center py-4 text-sm text-gray-500 dark:text-gray-400 mt-auto border-t dark:border-gray-700">
+      <footer className="bg-gray-100 dark:bg-gray-800 text-center text-sm text-gray-600 dark:text-gray-400 py-4">
         © {new Date().getFullYear()} CauveryStore. All rights reserved.
       </footer>
     </div>

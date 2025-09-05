@@ -1,0 +1,33 @@
+name: 🔁 Full Support Test Flow
+
+on:
+  workflow_dispatch:     # manual trigger
+  schedule:
+    - cron: '30 3 * * *' # every day at 3:30 AM UTC
+  push:
+    branches:
+      - main             # or your deploy branch
+
+jobs:
+  test-flow:
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      FAILURE_WEBHOOK_URL: ${{ secrets.FAILURE_WEBHOOK_URL }}
+
+    steps:
+      - name: 📦 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run fullSupportTestFlow
+        run: npx tsx scripts/fullSupportTestFlow.ts

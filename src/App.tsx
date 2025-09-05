@@ -1,129 +1,127 @@
-import { useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async";
-import { Toaster } from "sonner";
+// src/App.tsx
 
-// Layouts
-import PublicLayout from "@/pages/Layouts/PublicLayout";
-import CustomerLayout from "@/pages/Layouts/CustomerLayout";
-import MerchantLayout from "@/pages/Layouts/MerchantLayout";
-import AdminLayout from "@/pages/Layouts/AdminLayout";
+import { Routes, Route } from 'react-router-dom';
 
-// Pages - Public
-import HomePage from "./pages/Home";
-import LoginPage from "./pages/LoginPage";
-import NotFoundPage from "./pages/NotFoundPage";
-import StorefrontPage from "./pages/StorefrontPage";
-import ProductDetail from "./pages/ProductDetail";
-import CategoryLandingPage from "./pages/CategoryLandingPage";
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 
-// Pages - Customer
-import CartPage from "./pages/CartPage";
-import CheckoutPage from "./pages/Checkout";
-import MyOrdersPage from "./pages/MyOrdersPage";
-import WishlistPage from "./pages/WishlistPage";
-import SupportPage from "./pages/SupportPage";
-import UserProfilePage from "./pages/UserProfilePage";
+// ✅ Layouts
+import PublicLayout from '@/pages/Layouts/PublicLayout';
+import CustomerLayout from '@/pages/Layouts/CustomerLayout';
+import MerchantLayout from '@/pages/Layouts/MerchantLayout';
+import AdminLayout from '@/pages/Layouts/AdminLayout';
 
-// Pages - Merchant
-import ProductUploadPage from "./pages/ProductUploadPage";
-import MerchantOrders from "./pages/MerchantOrders";
+// ✅ Pages
+import Home from '@/pages/Home';
+import LoginPage from '@/pages/LoginPage';
+import Signup from '@/pages/Signup';
+import NotFound from '@/pages/NotFound';
+import CartPage from '@/pages/CartPage';
+import Checkout from '@/pages/Checkout';
+import WishlistPage from '@/pages/WishlistPage';
+import ProductDetail from '@/pages/ProductDetail';
+import StorefrontPage from '@/pages/StorefrontPage';
+import CustomerSupportPage from '@/pages/CustomerSupportPage';
+import TrackOrderPage from '@/pages/TrackOrderPage';
+import CancelOrderPage from '@/pages/CancelOrderPage';
+import MyOrdersPage from '@/pages/MyOrdersPage';
+import UserProfilePage from '@/pages/UserProfilePage';
+import ThankYouPage from '@/pages/ThankYouPage';
+import PaymentFailedPage from '@/pages/PaymentFailedPage';
 
-// Pages - Admin
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminSupport from "./pages/AdminSupportPage";
+// ✅ Merchant Pages
+import ProductUploadPage from '@/pages/ProductUploadPage';
+import MerchantOrders from '@/pages/MerchantOrders';
+import MerchantDashboard from '@/pages/MerchantDashboard';
+import MerchantProfilePage from '@/pages/MerchantProfilePage';
 
-// Components & Providers
-import Spinner from "./components/Spinner";
-import ErrorBoundary from "./components/ErrorBoundary";
-import ProtectedRoute from "./components/ProtectedRoute";
+// ✅ Admin Pages
+import AdminDashboard from '@/pages/AdminDashboard';
+import AdminOrders from '@/pages/AdminOrders';
+import AdminUsersPage from '@/pages/AdminUsersPage';
+import AdminSupportPage from '@/pages/AdminSupportPage';
+import AdminBannerManager from '@/pages/AdminBannerManager';
+import AdminCategoryManager from '@/pages/AdminCategoryManager';
+import AdminFAQManager from '@/pages/AdminFAQManager';
+import AdminPayoutManager from '@/pages/AdminPayoutManager';
+import AdminSEOManager from '@/pages/AdminSEOManager';
+import AdminTestimonialManager from '@/pages/AdminTestimonialManager';
+import AdminDownloadLogs from '@/pages/AdminDownloadLogs';
+import AdminTestResultsDashboard from '@/pages/AdminTestResultsDashboard';
 
-// Context / Store
-import { useDarkMode } from "./store/darkModeStore";
-import { LoadingProvider } from "./context/LoadingContext";
-
-// Global styles
-import "./Ecommerce-green-theme.css";
-
-// Scroll-to-top on route change
-const ScrollToTop = () => {
-  const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [pathname]);
-  return null;
-};
+// ✅ Utilities
+import ProtectedRoute from '@/components/ProtectedRoute';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function App() {
-  const { dark } = useDarkMode();
-
   return (
-    <HelmetProvider>
-      <ErrorBoundary>
-        <div className={dark ? "dark bg-gray-900 text-white" : "bg-white text-gray-900"}>
-          {/* Toast notifications */}
-          <Toaster richColors position="top-center" />
-          <LoadingProvider>
-            <ScrollToTop />
-            <Routes>
-              {/* Public Routes */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/store" element={<StorefrontPage />} />
-                <Route path="/product/:productId" element={<ProductDetail />} />
-                <Route path="/category/:categoryId" element={<CategoryLandingPage />} />
-              </Route>
+    <ErrorBoundary>
+      <Routes>
+        {/* ✅ Public Pages */}
+        <Route path="/" element={<PublicLayout />}>
+          <Route index element={<Home />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="signup" element={<Signup />} />
+          <Route path="product/:id" element={<ProductDetail />} />
+          <Route path="store" element={<StorefrontPage />} />
+          <Route path="thank-you" element={<ThankYouPage />} />
+          <Route path="payment-failed" element={<PaymentFailedPage />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="reset-password" element={<ResetPassword />} />
+          <Route
+            path="admin/download-logs"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDownloadLogs />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
 
-              {/* Customer Routes */}
-              <Route
-                path="/account"
-                element={
-                  <ProtectedRoute allowedRoles={["customer"]}>
-                    <CustomerLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="cart" element={<CartPage />} />
-                <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="orders" element={<MyOrdersPage />} />
-                <Route path="wishlist" element={<WishlistPage />} />
-                <Route path="support" element={<SupportPage />} />
-                <Route path="profile" element={<UserProfilePage />} />
-              </Route>
+        {/* ✅ Customer Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
+          <Route element={<CustomerLayout />}>
+            <Route path="cart" element={<CartPage />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="wishlist" element={<WishlistPage />} />
+            <Route path="orders" element={<MyOrdersPage />} />
+            <Route path="support" element={<CustomerSupportPage />} />
+            <Route path="track-order/:id" element={<TrackOrderPage />} />
+            <Route path="cancel-order/:id" element={<CancelOrderPage />} />
+            <Route path="profile" element={<UserProfilePage />} />
+          </Route>
+        </Route>
 
-              {/* Merchant Routes */}
-              <Route
-                path="/merchant"
-                element={
-                  <ProtectedRoute allowedRoles={["merchant"]}>
-                    <MerchantLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="upload" element={<ProductUploadPage />} />
-                <Route path="orders" element={<MerchantOrders />} />
-              </Route>
+        {/* ✅ Merchant Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['merchant']} />}>
+          <Route element={<MerchantLayout />}>
+            <Route path="merchant/dashboard" element={<MerchantDashboard />} />
+            <Route path="merchant/orders" element={<MerchantOrders />} />
+            <Route path="merchant/upload-product" element={<ProductUploadPage />} />
+            <Route path="merchant/profile" element={<MerchantProfilePage />} />
+          </Route>
+        </Route>
 
-              {/* Admin Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="support" element={<AdminSupport />} />
-              </Route>
+        {/* ✅ Admin Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="admin/dashboard" element={<AdminDashboard />} />
+            <Route path="admin/orders" element={<AdminOrders />} />
+            <Route path="admin/users" element={<AdminUsersPage />} />
+            <Route path="admin/support" element={<AdminSupportPage />} />
+            <Route path="admin/banners" element={<AdminBannerManager />} />
+            <Route path="admin/categories" element={<AdminCategoryManager />} />
+            <Route path="admin/faqs" element={<AdminFAQManager />} />
+            <Route path="admin/payouts" element={<AdminPayoutManager />} />
+            <Route path="admin/seo" element={<AdminSEOManager />} />
+            <Route path="admin/testimonials" element={<AdminTestimonialManager />} />
+            <Route path="admin/test-results" element={<AdminTestResultsDashboard />} />
+                      </Route>
+        </Route>
 
-              {/* 404 Catch-All */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </LoadingProvider>
-        </div>
-      </ErrorBoundary>
-    </HelmetProvider>
+        {/* ✅ 404 Fallback */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }

@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/components/AuthProvider";
 import { Link } from "react-router-dom";
+import Spinner from "@/components/ui/Spinner";
+import EmptyState from "@/components/ui/EmptyState";
+import ErrorAlert from "@/components/ui/ErrorAlert";
 
 export default function ReturnRequestsPage() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (user) fetchRequests();
   }, [user]);
 
   const fetchRequests = async () => {
+    setLoading(true);
+    setError("");
     const { data, error } = await supabase
       .from("return_requests")
       .select(`*, order:order_id(created_at), items:order_items(quantity, product:product_id(name, image_url))`)
@@ -20,17 +27,25 @@ export default function ReturnRequestsPage() {
       .order("created_at", { ascending: false });
 
     if (!error) setRequests(data || []);
+    else setError("Failed to load return requests");
     setLoading(false);
   };
 
-  if (loading) return <div className="p-4">Loading return requests...</div>;
-
   return (
     <div className="p-4 max-w-4xl mx-auto">
+      <Helmet>
+        <title>Return Requests | Cauverystore</title>
+        <meta name="description" content="View your return or replacement request history." />
+      </Helmet>
+
       <h2 className="text-2xl font-bold text-green-700 mb-6">My Return / Replace Requests</h2>
 
-      {requests.length === 0 ? (
-        <p>No return or replacement requests found.</p>
+      {loading ? (
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : requests.length === 0 ? (
+        <EmptyState message="No return or replacement requests found." />
       ) : (
         <div className="space-y-6">
           {requests.map((req) => (
@@ -52,19 +67,33 @@ export default function ReturnRequestsPage() {
               <div className="text-sm space-y-1">
                 {req.items?.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-2 items-center">
-                    <img src={item.product.image_url} alt={item.product.name} className="w-10 h-10 object-cover rounded" />
-                    <span>{item.product.name} × {item.quantity}</span>
+                    <img
+                      src={item.product.image_url}
+                      alt={item.product.name}
+                      className="w-10 h-10 object-cover rounded"
+                    />
+                    <span>
+                      {item.product.name} × {item.quantity}
+                    </span>
                   </div>
                 ))}
               </div>
               <div className="mt-2 text-sm">
                 Status: {req.status ? (
-                  <span className={`font-medium ${
-                    req.status === 'approved' ? 'text-green-600' :
-                    req.status === 'rejected' ? 'text-red-600' :
-                    'text-yellow-600'
-                  }`}>{req.status}</span>
-                ) : <span className="text-yellow-600 font-medium">Pending</span>}
+                  <span
+                    className={`font-medium ${
+                      req.status === "approved"
+                        ? "text-green-600"
+                        : req.status === "rejected"
+                        ? "text-red-600"
+                        : "text-yellow-600"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                ) : (
+                  <span className="text-yellow-600 font-medium">Pending</span>
+                )}
               </div>
             </div>
           ))}

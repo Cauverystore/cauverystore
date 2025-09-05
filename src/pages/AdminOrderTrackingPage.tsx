@@ -1,87 +1,92 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
-import { Helmet } from 'react-helmet-async';
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import EmptyState from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
-interface Order {
+interface TrackedOrder {
   id: string;
-  user_email: string;
-  status: string;
-  tracking_info: string;
+  user_id: string;
+  shipping_status: string;
+  tracking_number: string;
+  courier: string;
+  estimated_delivery: string;
   created_at: string;
 }
 
 export default function AdminOrderTrackingPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [trackingList, setTrackingList] = useState<TrackedOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetchOrders();
+    fetchTracking();
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchTracking = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("order_tracking")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (error) toast.error('Failed to fetch orders');
-    else setOrders(data || []);
+    if (error) setError("Unable to load tracking data.");
+    else setTrackingList(data || []);
+
     setLoading(false);
   };
 
-  const updateTracking = async (id: string, info: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ tracking_info: info })
-      .eq('id', id);
-
-    if (!error) {
-      toast.success('Tracking updated');
-      fetchOrders();
-    } else {
-      toast.error('Update failed');
-    }
-  };
+  const filteredList = trackingList.filter((t) =>
+    t.tracking_number.toLowerCase().includes(search.toLowerCase()) ||
+    t.user_id.toLowerCase().includes(search.toLowerCase()) ||
+    t.courier.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <Helmet>
-        <title>Admin Order Tracking</title>
+        <title>Order Tracking | Admin</title>
+        <meta name="description" content="View and manage shipment tracking details for orders." />
       </Helmet>
-      <h1 className="text-2xl font-bold mb-4 text-green-700">Order Tracking</h1>
+
+      <h1 className="text-3xl font-bold text-green-700 mb-6">Order Tracking</h1>
+
+      <Input
+        placeholder="Search by tracking number, user ID, or courier"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="mb-4"
+      />
 
       {loading ? (
-        <p>Loading orders...</p>
+        <Spinner size="lg" />
+      ) : error ? (
+        <ErrorAlert message={error} />
+      ) : filteredList.length === 0 ? (
+        <EmptyState message="No matching tracking entries found." />
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
+          {filteredList.map((entry) => (
             <div
-              key={order.id}
-              className="p-4 border rounded bg-white dark:bg-gray-800 flex justify-between items-center"
+              key={entry.id}
+              className="p-4 border rounded bg-white dark:bg-gray-800 shadow-sm"
             >
-              <div>
-                <p className="text-sm font-semibold text-green-700">Order ID: {order.id}</p>
-                <p className="text-sm text-gray-600">User: {order.user_email}</p>
-                <p className="text-sm text-gray-600">Status: {order.status}</p>
-                <p className="text-xs text-gray-400">
-                  Placed: {new Date(order.created_at).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-700 mt-2">
-                  Tracking Info:{" "}
-                  <span className="font-mono text-blue-700">{order.tracking_info || 'N/A'}</span>
-                </p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <input
-                  type="text"
-                  placeholder="Update tracking info"
-                  defaultValue={order.tracking_info || ''}
-                  onBlur={(e) => updateTracking(order.id, e.target.value)}
-                  className="border px-3 py-1 rounded text-sm"
-                />
-              </div>
+              <p className="text-sm">
+                <strong>Tracking No:</strong> {entry.tracking_number}
+              </p>
+              <p className="text-sm">
+                <strong>Courier:</strong> {entry.courier} | <strong>Status:</strong> {entry.shipping_status}
+              </p>
+              <p className="text-sm">
+                <strong>Est. Delivery:</strong> {entry.estimated_delivery}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                User: {entry.user_id} | Logged: {new Date(entry.created_at).toLocaleString()}
+              </p>
             </div>
           ))}
         </div>

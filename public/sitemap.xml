@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-
-  <url>
-    <loc>https://cauverystore.vercel.app/</loc>
-    <priority>1.0</priority>
-  </url>
-
-  <url>
-    <loc>https://cauverystore.vercel.app/store</loc>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://cauverystore.vercel.app/login</loc>
-    <priority>0.5</priority>
-  </url>
-
-  <url>
-    <loc>https://cauverystore.vercel.app/category/handicrafts</loc>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://cauverystore.vercel.app/product/123</loc>
-    <priority>0.6</priority>
-  </url>
-
+<urlset 
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+                      http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd"
+>
+<url><loc>https://www.cauverystore.in</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/store</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/wishlist</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/cart</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/support</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/checkout</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/login</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/signup</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/thank-you</loc><changefreq>weekly</changefreq></url>
+<url><loc>https://www.cauverystore.in/product/brass-dancing-ganesha</loc><changefreq>daily</changefreq></url>
+<url><loc>https://www.cauverystore.in/product/mysore-silk-saree</loc><changefreq>daily</changefreq></url>
+<url><loc>https://www.cauverystore.in/product/sandalwood-carving</loc><changefreq>daily</changefreq></url>
+<url><loc>https://www.cauverystore.in/product/coffee-table-book</loc><changefreq>daily</changefreq></url>
+<url><loc>https://www.cauverystore.in/product/madhubani-wall-art</loc><changefreq>daily</changefreq></url>
 </urlset>

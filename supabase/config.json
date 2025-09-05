@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "support-reply-email": {
+      "on_insert": {
+        "table": "support_replies",
+        "schema": "public",
+        "filter": "is_admin=eq.true"
+      }
+    }
+  }
+}

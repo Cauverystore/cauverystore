@@ -4,12 +4,12 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 
 import ProductCard from "@/components/ProductCard";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useDebounce } from "@/Hooks/useDebounce";
 import { highlightMatch } from "@/utils/highlightMatch";
 
 const CATEGORIES = ["all", "herbs", "oils", "grains"];
@@ -25,14 +25,25 @@ export default function StorefrontPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
+  const [session, setSession] = useState<any>(null);
 
   const pageSize = 6;
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
 
   useEffect(() => {
-    fetchProducts();
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      setAuthChecked(true);
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (authChecked) fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, debouncedSearchTerm, selectedCategory, selectedTag, page]);
+  }, [sortBy, debouncedSearchTerm, selectedCategory, selectedTag, page, authChecked]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -74,19 +85,72 @@ export default function StorefrontPage() {
             p.name.toLowerCase().includes(term) ||
             p.description.toLowerCase().includes(term)
         );
+        window.gtag?.("event", "search", {
+          search_term: debouncedSearchTerm,
+        });
       }
 
       setProducts(filtered);
+
+      // GA4: view_item_list event
+      if (filtered.length > 0) {
+        window.gtag?.("event", "view_item_list", {
+          item_list_name: "Storefront",
+          items: filtered.map((p, index) => ({
+            item_id: p.id,
+            item_name: p.name,
+            index,
+            price: p.price,
+            item_category: p.category,
+          })),
+        });
+      }
+
     } catch (err: any) {
-      console.error("Unexpected error:", err);
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCategorySelect = (cat: string) => {
+    setSelectedCategory(cat);
+    setShowCategories(false);
+    window.gtag?.("event", "select_item", {
+      item_list_name: "Category Filter",
+      items: [{ item_name: cat }],
+    });
+  };
+
+  const handleTagToggle = (tag: string) => {
+    const newTag = selectedTag === tag ? "" : tag;
+    setSelectedTag(newTag);
+    if (newTag) {
+      window.gtag?.("event", "select_item", {
+        item_list_name: "Tag Filter",
+        items: [{ item_name: newTag }],
+      });
+    }
+  };
+
+  const handleSortChange = (val: string) => {
+    setSortBy(val);
+    window.gtag?.("event", "filter", {
+      filter_type: "sort_by",
+      value: val,
+    });
+  };
+
   const handlePrevPage = () => setPage((prev) => Math.max(prev - 1, 1));
   const handleNextPage = () => setPage((prev) => prev + 1);
+
+  if (!authChecked) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
@@ -104,7 +168,6 @@ export default function StorefrontPage() {
         <meta property="og:image" content="https://cauverystore.in/og-store.jpg" />
         <meta property="og:url" content="https://cauverystore.in/store" />
         <meta property="og:type" content="website" />
-
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Shop Herbal & Natural Products - Cauverystore" />
         <meta
@@ -129,7 +192,6 @@ export default function StorefrontPage() {
           className="border px-3 py-2 rounded w-48 dark:bg-gray-800 dark:text-white"
         />
 
-        {/* Category Dropdown */}
         <div className="relative">
           <div
             className="border px-3 py-2 rounded bg-white dark:bg-gray-800 dark:text-white cursor-pointer w-48"
@@ -142,10 +204,7 @@ export default function StorefrontPage() {
               {CATEGORIES.map((cat) => (
                 <li
                   key={cat}
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    setShowCategories(false);
-                  }}
+                  onClick={() => handleCategorySelect(cat)}
                   className={`px-3 py-2 hover:bg-green-100 dark:hover:bg-green-800 cursor-pointer ${
                     selectedCategory === cat ? "bg-green-200 dark:bg-green-700 font-semibold" : ""
                   }`}
@@ -157,10 +216,9 @@ export default function StorefrontPage() {
           )}
         </div>
 
-        {/* Sort Dropdown */}
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e) => handleSortChange(e.target.value)}
           className="border px-3 py-2 rounded w-48 dark:bg-gray-800 dark:text-white"
         >
           <option value="default">Sort</option>
@@ -179,7 +237,7 @@ export default function StorefrontPage() {
                 ? "bg-green-600 text-white"
                 : "bg-white text-gray-700 hover:bg-green-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-green-900"
             }`}
-            onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
+            onClick={() => handleTagToggle(tag)}
           >
             {tag}
           </button>
@@ -206,7 +264,6 @@ export default function StorefrontPage() {
             ))}
           </div>
 
-          {/* Pagination */}
           <div className="flex justify-center items-center gap-4 mt-6">
             <Button onClick={handlePrevPage} disabled={page === 1}>
               Previous

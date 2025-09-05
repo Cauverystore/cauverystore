@@ -1,7 +1,7 @@
 // Page: EditProduct.tsx
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/SupabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 

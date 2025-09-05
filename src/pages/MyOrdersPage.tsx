@@ -1,10 +1,11 @@
+// src/pages/MyOrdersPage.tsx
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Helmet } from "react-helmet-async";
 import PageHeader from "@/components/ui/PageHeader";
-import Spinner from "@/components/ui/Spinner"; //
+import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import InputError from "@/components/ui/InputError";
 import toast from "react-hot-toast";
 
@@ -29,16 +30,33 @@ export default function MyOrdersPage() {
   const [returnReason, setReturnReason] = useState("");
   const [submittingReturn, setSubmittingReturn] = useState(false);
 
+  const [authChecked, setAuthChecked] = useState(false);
+  const [session, setSession] = useState<any>(null);
+
   useEffect(() => {
-    fetchOrders();
+    if (typeof window === "undefined") return;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      setAuthChecked(true);
+    };
+    init();
   }, []);
+
+  useEffect(() => {
+    if (authChecked) fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authChecked]);
 
   const fetchOrders = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
       const { data, error } = await supabase
@@ -66,7 +84,9 @@ export default function MyOrdersPage() {
 
     setSubmittingReview(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
       const { error } = await supabase.from("product_reviews").insert([
@@ -99,7 +119,9 @@ export default function MyOrdersPage() {
 
     setSubmittingReturn(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
       const { error } = await supabase.from("support_requests").insert([
@@ -124,6 +146,14 @@ export default function MyOrdersPage() {
     }
   };
 
+  if (!authChecked) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-6">
       <Helmet>
@@ -132,13 +162,23 @@ export default function MyOrdersPage() {
           name="description"
           content="View and manage your past orders. Submit reviews, request returns, and download invoices."
         />
+        <meta property="og:title" content="My Orders | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Easily manage your order history on Cauverystore. Download invoices, return items, and more."
+        />
+        <meta name="twitter:title" content="My Orders | Cauverystore" />
+        <meta
+          name="twitter:description"
+          content="Track and manage your Cauverystore orders in one place."
+        />
       </Helmet>
 
       <PageHeader title="My Orders" />
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <LoadingSpinner />
+          <Spinner size="lg" />
         </div>
       ) : error ? (
         <ErrorAlert message={error} />
@@ -152,15 +192,20 @@ export default function MyOrdersPage() {
           >
             <div className="flex justify-between items-center mb-2">
               <div className="text-sm text-gray-500">
-                Order #{order.id.slice(0, 8)} | {new Date(order.created_at).toLocaleDateString()}
+                Order #{order.id.slice(0, 8)} |{" "}
+                {new Date(order.created_at).toLocaleDateString()}
               </div>
-              <div className="text-sm font-medium text-green-700 capitalize">{order.status}</div>
+              <div className="text-sm font-medium text-green-700 capitalize">
+                {order.status}
+              </div>
             </div>
 
             <ul className="space-y-2 mb-4">
               {order.items?.map((item: any) => (
                 <li key={item.id} className="flex justify-between items-center">
-                  <span>{item.name} × {item.quantity}</span>
+                  <span>
+                    {item.name} × {item.quantity}
+                  </span>
                   <span className="text-sm">₹{item.price * item.quantity}</span>
                 </li>
               ))}
@@ -185,20 +230,19 @@ export default function MyOrdersPage() {
               >
                 Return / Replace
               </Button>
-              <Button
-                size="sm"
-                asChild
-              >
-                <a href={`/invoice/${order.id}`} target="_blank" rel="noreferrer">
+              <Button size="sm" asChild>
+                <a
+                  href={`/invoice/${order.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Invoice
                 </a>
               </Button>
-              <Button
-                size="sm"
-                variant="link"
-                asChild
-              >
-                <a href={`/contact-support?order_id=${order.id}`}>Contact Support</a>
+              <Button size="sm" variant="link" asChild>
+                <a href={`/contact-support?order_id=${order.id}`}>
+                  Contact Support
+                </a>
               </Button>
             </div>
 
@@ -219,12 +263,16 @@ export default function MyOrdersPage() {
                     className="border p-1 rounded"
                   >
                     {[5, 4, 3, 2, 1].map((r) => (
-                      <option key={r} value={r}>{r} Star</option>
+                      <option key={r} value={r}>
+                        {r} Star
+                      </option>
                     ))}
                   </select>
                   <Button
                     size="sm"
-                    onClick={() => handleReviewSubmit(order.id, order.items[0]?.id)}
+                    onClick={() =>
+                      handleReviewSubmit(order.id, order.items[0]?.id)
+                    }
                     disabled={submittingReview}
                   >
                     Submit

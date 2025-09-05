@@ -11,7 +11,6 @@ export default defineConfig({
   plugins: [
     react(),
 
-    // Bundle visualizer for build size analysis (generates dist/stats.html)
     visualizer({
       filename: "dist/stats.html",
       open: false,
@@ -20,15 +19,13 @@ export default defineConfig({
       template: "treemap",
     }),
 
-    // Brotli compression for smaller asset delivery
     ViteCompression({
       algorithm: "brotliCompress",
       ext: ".br",
+      threshold: 10240,
       deleteOriginFile: false,
-      threshold: 10240, // Compress files >10KB
     }),
 
-    // Inject preload and preconnect links into index.html
     createHtmlPlugin({
       inject: {
         data: {
@@ -43,35 +40,62 @@ export default defineConfig({
       minify: true,
     }),
 
-    // PWA manifest and service worker registration
     VitePWA({
       registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "robots.txt", "apple-touch-icon.png"],
       manifest: {
         name: "Cauverystore",
         short_name: "Cauverystore",
+        description: "India's trusted e-commerce marketplace for curated products.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#16a34a",
+        orientation: "portrait",
         icons: [
           {
-            src: "/pwa-icon-192.png",
+            src: "/icons/icon-192x192.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/pwa-icon-512.png",
+            src: "/icons/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
           },
+          {
+            src: "/icons/icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable",
+          },
         ],
+      },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/cdn\.cauverystore\.in\/.*\.(?:png|jpg|jpeg|webp|svg)$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "image-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+              },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        enabled: true,
+        type: "module",
       },
     }),
   ],
 
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "src"), // ✅ Alias fix here
     },
   },
 
@@ -85,7 +109,6 @@ export default defineConfig({
     sourcemap: false,
     minify: "esbuild",
     assetsInlineLimit: 8192,
-
     rollupOptions: {
       treeshake: true,
       output: {

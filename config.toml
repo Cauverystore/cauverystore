@@ -1,0 +1,8 @@
+project_id = "cauverystore"
+
+[api]
+enabled = true
+port = 54321
+
+[functions]
+functions_dir = "supabase/functions"

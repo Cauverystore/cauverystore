@@ -1,10 +1,9 @@
-// src/pages/CartPage.tsx
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 
-import { Button } from "@/components/ui/button"; // ✅ Fixed import (named + lowercase)
+import { Button } from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import ErrorAlert from "@/components/ui/ErrorAlert";
 import EmptyState from "@/components/ui/EmptyState";
@@ -26,11 +25,26 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchCartItems();
+    if (typeof window === "undefined") return;
+
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setError("User not logged in");
+      }
+      setAuthChecked(true);
+    };
+    checkSession();
   }, []);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    fetchCartItems();
+  }, [authChecked]);
 
   const fetchCartItems = async () => {
     setLoading(true);
@@ -54,7 +68,6 @@ export default function CartPage() {
       if (cartError) throw cartError;
       setCartItems(data || []);
     } catch (err: any) {
-      console.error("Fetch cart error:", err);
       setError(err.message || "Failed to load cart items.");
     } finally {
       setLoading(false);
@@ -72,7 +85,6 @@ export default function CartPage() {
 
       setCartItems((prev) => prev.filter((item) => item.id !== itemId));
     } catch (err: any) {
-      console.error("Remove cart item error:", err);
       setError("Failed to remove item.");
     }
   };
@@ -81,6 +93,31 @@ export default function CartPage() {
     (acc, item) => acc + item.quantity * item.product.price,
     0
   );
+
+  const handleCheckout = () => {
+    if (typeof window !== "undefined" && "gtag" in window) {
+      window.gtag("event", "begin_checkout", {
+        currency: "INR",
+        value: total,
+        items: cartItems.map((item) => ({
+          item_id: item.product.id,
+          item_name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+      });
+    }
+
+    navigate("/account/checkout");
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="py-12 flex justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -115,19 +152,14 @@ export default function CartPage() {
       ) : (
         <div className="space-y-6">
           {cartItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-4 border-b pb-4"
-            >
+            <div key={item.id} className="flex items-center gap-4 border-b pb-4">
               <img
                 src={item.product.image_url}
                 alt={item.product.name}
                 className="w-20 h-20 object-cover rounded"
               />
               <div className="flex-1">
-                <h2 className="font-semibold text-lg">
-                  {item.product.name}
-                </h2>
+                <h2 className="font-semibold text-lg">{item.product.name}</h2>
                 <p className="text-sm text-gray-600">
                   Qty: {item.quantity} × ₹{item.product.price}
                 </p>
@@ -146,14 +178,11 @@ export default function CartPage() {
             </div>
           ))}
 
-          {/* Total Summary and Checkout */}
           <div className="text-right space-y-3">
             <p className="text-xl font-semibold text-green-800">
               Total: {formatPrice(total)}
             </p>
-            <Button onClick={() => navigate("/checkout")}>
-              Proceed to Checkout
-            </Button>
+            <Button onClick={handleCheckout}>Proceed to Checkout</Button>
           </div>
         </div>
       )}

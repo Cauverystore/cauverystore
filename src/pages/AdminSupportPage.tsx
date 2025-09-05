@@ -1,84 +1,121 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import toast from 'react-hot-toast';
+// src/pages/AdminDashboard.tsx
+import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { supabase } from "@/lib/supabaseClient";
 
-interface SupportRequest {
-  id: number;
-  user_email: string;
-  subject: string;
-  message: string;
-  created_at: string;
-  resolved: boolean;
-}
+import Spinner from "@/components/ui/Spinner";
+import ErrorAlert from "@/components/ui/ErrorAlert";
+import PageHeader from "@/components/ui/PageHeader";
 
-export default function AdminSupportPage() {
-  const [requests, setRequests] = useState<SupportRequest[]>([]);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    fetchSupportRequests();
+    if (typeof window === "undefined") return;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setError("You must be logged in.");
+        setLoading(false);
+        setAuthChecked(true);
+        return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user || !user.email?.endsWith("@admin.cauverystore.in")) {
+        setError("Unauthorized access");
+        setLoading(false);
+        setAuthChecked(true);
+        return;
+      }
+
+      setAuthChecked(true);
+      fetchStats();
+    };
+
+    init();
   }, []);
 
-  const fetchSupportRequests = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('support_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const fetchStats = async () => {
+    try {
+      const [usersRes, ordersRes, productsRes] = await Promise.all([
+        supabase.from("profiles").select("*", { count: "exact" }),
+        supabase.from("orders").select("*", { count: "exact" }),
+        supabase.from("products").select("*", { count: "exact" }),
+      ]);
 
-    if (!error && data) {
-      setRequests(data);
-    }
-    setLoading(false);
-  };
+      if (usersRes.error || ordersRes.error || productsRes.error) {
+        throw new Error("Failed to fetch dashboard data");
+      }
 
-  const markAsResolved = async (id: number) => {
-    const { error } = await supabase
-      .from('support_requests')
-      .update({ resolved: true })
-      .eq('id', id);
-
-    if (!error) {
-      toast.success('Marked as resolved');
-      fetchSupportRequests();
-    } else {
-      toast.error('Failed to update');
+      setStats({
+        users: usersRes.count || 0,
+        orders: ordersRes.count || 0,
+        products: productsRes.count || 0,
+      });
+    } catch (err: any) {
+      console.error("Dashboard fetch error:", err);
+      setError(err.message || "Failed to load dashboard.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto min-h-screen bg-white dark:bg-gray-900 text-gray-800 dark:text-white">
-      <h1 className="text-2xl font-bold mb-6 text-green-700">Customer Support Requests</h1>
+    <div className="p-6 max-w-6xl mx-auto">
+      <Helmet>
+        <title>Admin Dashboard | Cauverystore</title>
+        <meta
+          name="description"
+          content="Overview of Cauverystore's users, orders, and product statistics for admins."
+        />
+        <meta property="og:title" content="Admin Dashboard | Cauverystore" />
+        <meta
+          property="og:description"
+          content="Monitor total users, orders, and products on Cauverystore."
+        />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:title" content="Admin Dashboard | Cauverystore" />
+        <meta
+          name="twitter:description"
+          content="Monitor total users, orders, and products on Cauverystore."
+        />
+      </Helmet>
 
-      {loading ? (
-        <p>Loading requests...</p>
-      ) : requests.length === 0 ? (
-        <p>No support requests found.</p>
+      <PageHeader title="Admin Dashboard" subtitle="Platform statistics at a glance" />
+
+      {!authChecked ? (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      ) : loading ? (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      ) : error ? (
+        <ErrorAlert message={error} />
       ) : (
-        <div className="space-y-4">
-          {requests.map((req) => (
-            <div
-              key={req.id}
-              className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 shadow"
-            >
-              <p className="text-sm text-gray-500">{new Date(req.created_at).toLocaleString()}</p>
-              <p className="font-semibold text-green-700">{req.subject}</p>
-              <p className="text-gray-700 dark:text-gray-300 mb-2">{req.message}</p>
-              <p className="text-sm text-gray-600">From: {req.user_email}</p>
-              <div className="mt-2">
-                {req.resolved ? (
-                  <span className="text-xs text-green-600 font-bold">Resolved</span>
-                ) : (
-                  <button
-                    onClick={() => markAsResolved(req.id)}
-                    className="text-xs bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                  >
-                    Mark as Resolved
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8">
+          <div className="bg-white border rounded shadow p-6 text-center">
+            <h3 className="text-xl font-semibold text-green-700 mb-2">Users</h3>
+            <p className="text-3xl font-bold">{stats.users}</p>
+          </div>
+          <div className="bg-white border rounded shadow p-6 text-center">
+            <h3 className="text-xl font-semibold text-green-700 mb-2">Orders</h3>
+            <p className="text-3xl font-bold">{stats.orders}</p>
+          </div>
+          <div className="bg-white border rounded shadow p-6 text-center">
+            <h3 className="text-xl font-semibold text-green-700 mb-2">Products</h3>
+            <p className="text-3xl font-bold">{stats.products}</p>
+          </div>
         </div>
       )}
     </div>
